@@ -1,0 +1,22 @@
+{
+  "name": "redmine-standup-bot",
+  "version": "0.1.0",
+  "description": "Slack app that collects daily standup updates, pre-filled from Redmine, and writes reports back as Redmine comments/status changes.",
+  "main": "src/app.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "migrate": "node src/lib/migrate.js"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.19.0",
+    "axios": "^1.7.7",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

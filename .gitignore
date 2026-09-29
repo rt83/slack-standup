@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/
+.env
+
+# Harness is its own repo; .claude/skills holds junctions into it.
+internal-ai-harness/
+.claude/
