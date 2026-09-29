@@ -1,95 +1,100 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import dotenv from 'dotenv';
+import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 
 /** The folder, relative to the working directory, the app reads its configuration from. */
 export const CONF_DIR = 'conf';
-/** The configuration file inside it, in dotenv's `KEY=value` format. */
-export const CONF_FILE = 'app.env';
+/** The configuration file inside it. */
+export const CONF_FILE = 'app.yaml';
 
-/** The settings in `<dir>/app.env`, or null when there is no such file. */
-export function readConfFile(dir: string): Record<string, string> | null {
-  const file = path.join(dir, CONF_FILE);
-  return fs.existsSync(file) ? dotenv.parse(fs.readFileSync(file)) : null;
-}
-
-/**
- * The app's configuration: `<dir>/app.env`, with any variable set in `env` taking
- * precedence over the file. The app passes `conf/` in its working directory.
- */
-export function loadConfigFrom(dir: string, env: NodeJS.ProcessEnv): Config {
-  const file = readConfFile(dir);
-  if (!file) {
-    throw new Error(`No configuration at ${path.join(dir, CONF_FILE)}. Copy conf-sample/ to conf/ and fill it in.`);
-  }
-  return loadConfig({ ...file, ...env });
-}
-
-const optionalString = z
+/** An optional text setting: missing, empty (`key:`) and blank all mean "not set". */
+const optionalText = z
   .string()
-  .trim()
-  .transform((value) => value || undefined)
-  .optional();
+  .nullish()
+  .transform((value) => value?.trim() || undefined);
 
 const timeZone = z
   .string()
   .default('UTC')
   .refine(isValidTimeZone, { message: 'must be an IANA time zone, e.g. Asia/Ho_Chi_Minh' });
 
-const envSchema = z.object({
-  SLACK_BOT_TOKEN: z.string().min(1),
-  SLACK_SIGNING_SECRET: z.string().min(1),
-  SLACK_UPDATES_CHANNEL: optionalString,
-  REDMINE_BASE_URL: z.url(),
-  PORT: z.coerce.number().int().positive().default(3000),
-  PUBLIC_URL: optionalString,
-  DB_PATH: z.string().default('./data/app.db'),
-  SUBMISSION_REMINDER_CRON: optionalString,
-  TZ: timeZone,
-});
+const serverSchema = z
+  .strictObject({
+    port: z.number().int().positive().default(3000),
+    /** Base URL people's browsers reach this server at; dashboard links are built from it. */
+    publicUrl: optionalText,
+  })
+  .prefault({});
 
-/** Every setting name the app reads. */
-export const CONFIG_KEYS = Object.keys(envSchema.shape);
+// Strict objects: an unknown key is almost always a typo, and is refused rather than ignored.
+const configSchema = z
+  .strictObject({
+    slack: z.strictObject({
+      botToken: z.string().min(1),
+      signingSecret: z.string().min(1),
+      /** Channel ID finished reports are posted to; unset means they are not posted. */
+      updatesChannel: optionalText,
+    }),
+    redmine: z.strictObject({
+      baseUrl: z.url(),
+    }),
+    server: serverSchema,
+    database: z
+      .strictObject({
+        path: z.string().min(1).default('./data/app.db'),
+      })
+      .prefault({}),
+    reminder: z
+      .strictObject({
+        /** Cron expression for the missing-update reminder, in `timeZone`; unset means no reminder. */
+        cron: optionalText,
+      })
+      .prefault({}),
+    /** The team's time zone. Decides what "today" means everywhere in the app. */
+    timeZone,
+  })
+  .transform((c) => ({
+    ...c,
+    server: {
+      port: c.server.port,
+      publicUrl: (c.server.publicUrl ?? `http://localhost:${c.server.port}`).replace(/\/+$/, ''),
+    },
+  }));
 
-export interface Config {
-  readonly slack: {
-    readonly botToken: string;
-    readonly signingSecret: string;
-    /** Channel finished reports are posted to; unset means reports are not posted. */
-    readonly updatesChannel: string | undefined;
-  };
-  readonly redmineBaseUrl: string;
-  readonly port: number;
-  /** Base URL people's browsers reach this server at; dashboard links are built from it. */
-  readonly publicUrl: string;
-  readonly dbPath: string;
-  /** Cron expression for the missing-update reminder; unset means no reminder. */
-  readonly reminderCron: string | undefined;
-  /** The team's time zone. Decides what "today" means everywhere in the app. */
-  readonly timeZone: string;
+export type Config = Readonly<z.infer<typeof configSchema>>;
+
+/** Validates raw settings once, so nothing else reads them unchecked. */
+export function parseConfig(raw: unknown): Config {
+  const result = configSchema.safeParse(raw ?? {});
+  if (!result.success) {
+    throw new Error(`Invalid configuration in ${path.join(CONF_DIR, CONF_FILE)}:\n${z.prettifyError(result.error)}`);
+  }
+  return result.data;
 }
 
-/** Validates the settings once, so nothing else reads them raw. */
-export function loadConfig(env: NodeJS.ProcessEnv): Config {
-  const result = envSchema.safeParse(env);
-  if (!result.success) {
-    throw new Error(`Invalid configuration (conf/app.env, or the environment that overrides it):\n${z.prettifyError(result.error)}`);
+/**
+ * The `server.port` in raw settings, or the default when it is absent or invalid. For the dev
+ * proxy, which must work before the rest of the file is filled in.
+ */
+export function serverPortIn(raw: unknown): number {
+  const server = z.object({ server: serverSchema }).safeParse(raw ?? {});
+  return (server.success ? server.data : z.object({ server: serverSchema }).parse({})).server.port;
+}
+
+/** The parsed contents of `<dir>/app.yaml`, or null when there is no such file. */
+export function readConfFile(dir: string): unknown {
+  const file = path.join(dir, CONF_FILE);
+  return fs.existsSync(file) ? (parseYaml(fs.readFileSync(file, 'utf8')) ?? {}) : null;
+}
+
+/** The app's configuration, from `<dir>/app.yaml`. The app passes `conf/` in its working directory. */
+export function loadConfigFrom(dir: string): Config {
+  const raw = readConfFile(dir);
+  if (raw === null) {
+    throw new Error(`No configuration at ${path.join(dir, CONF_FILE)}. Copy conf-sample/ to conf/ and fill it in.`);
   }
-  const e = result.data;
-  return {
-    slack: {
-      botToken: e.SLACK_BOT_TOKEN,
-      signingSecret: e.SLACK_SIGNING_SECRET,
-      updatesChannel: e.SLACK_UPDATES_CHANNEL,
-    },
-    redmineBaseUrl: e.REDMINE_BASE_URL,
-    port: e.PORT,
-    publicUrl: (e.PUBLIC_URL ?? `http://localhost:${e.PORT}`).replace(/\/+$/, ''),
-    dbPath: e.DB_PATH,
-    reminderCron: e.SUBMISSION_REMINDER_CRON,
-    timeZone: e.TZ,
-  };
+  return parseConfig(raw);
 }
 
 function isValidTimeZone(zone: string): boolean {

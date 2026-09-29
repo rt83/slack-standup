@@ -56,9 +56,9 @@ flowchart TB
     people["Team members"]
   end
   subgraph server["Your server"]
-    proxy["HTTPS reverse proxy"] --> bot["Standup bot<br/>Node.js on PORT"]
+    proxy["HTTPS reverse proxy"] --> bot["Standup bot<br/>Node.js on server.port"]
     bot --- db[("SQLite<br/>data/app.db")]
-    conf["conf/app.env"] -. "read at start" .-> bot
+    conf["conf/app.yaml"] -. "read at start" .-> bot
   end
   redmine["Redmine (hosted)<br/>REST API"]
   browser["Browser"]
@@ -175,54 +175,60 @@ npm run build          # builds the dashboard client into dist/dashboard</code><
     <p><code>npm run build</code> builds only the dashboard's browser code. Run it again after every upgrade.</p>
 
     <h2 id="configure">4. Configure</h2>
-    <p>The app reads its settings from <code>conf/app.env</code> in the folder it is started from. <code>conf-sample/</code> is the template, and it is kept in git. <code>conf/</code> holds your secrets, and git ignores it.</p>
+    <p>The app reads its settings from <code>conf/app.yaml</code> in the folder it is started from. <code>conf-sample/</code> is the template, and it is kept in git. <code>conf/</code> holds your secrets, and git ignores it.</p>
     <pre><code class="language-bash">cp -r conf-sample conf
-chmod 700 conf &amp;&amp; chmod 600 conf/app.env    # it holds the Slack secrets</code></pre>
-    <p>Then edit <code>conf/app.env</code>:</p>
-    <pre data-file="conf/app.env"><code class="language-ini">SLACK_BOT_TOKEN=xoxb-your-bot-token
-SLACK_SIGNING_SECRET=your-signing-secret
-SLACK_UPDATES_CHANNEL=C0123456789
+chmod 700 conf &amp;&amp; chmod 600 conf/app.yaml    # it holds the Slack secrets</code></pre>
+    <p>Then edit <code>conf/app.yaml</code>:</p>
+    <pre data-file="conf/app.yaml"><code class="language-yaml">slack:
+  botToken: xoxb-your-bot-token
+  signingSecret: your-signing-secret
+  updatesChannel: C0123456789
 
-REDMINE_BASE_URL=https://redmine.example.com
+redmine:
+  baseUrl: https://redmine.example.com
 
-PORT=3000
-PUBLIC_URL=https://standup.example.com
-DB_PATH=./data/app.db
-SUBMISSION_REMINDER_CRON=0 10 * * 1-5
-TZ=Asia/Ho_Chi_Minh</code></pre>
+server:
+  port: 3000
+  publicUrl: https://standup.example.com
+
+database:
+  path: ./data/app.db
+
+reminder:
+  cron: "0 10 * * 1-5"
+
+timeZone: Asia/Ho_Chi_Minh</code></pre>
+    <p>Quote the cron expression. An unquoted <code>*</code> at the start of a YAML value has a special meaning.</p>
 
     <figure class="diagram">
       <pre class="mermaid">
 flowchart LR
-  file["conf/app.env<br/>in the working directory"] --> merge{"Same name set in<br/>the environment?"}
-  env["Process environment"] --> merge
-  merge -- "yes" --> useEnv["Environment value wins"]
-  merge -- "no" --> useFile["File value is used"]
-  useEnv --> check["Validated once at start"]
-  useFile --> check
-  check -- "invalid or missing" --> stop["App stops and names<br/>each bad setting"]
+  file["conf/app.yaml<br/>in the working directory"] --> exists{"File exists?"}
+  exists -- "no" --> missing["App stops: copy conf-sample/"]
+  exists -- "yes" --> check["Validated once at start"]
+  check -- "missing, malformed<br/>or unknown key" --> stop["App stops and names<br/>each bad setting"]
   check -- "valid" --> run["App starts"]
       </pre>
-      <figcaption>Where each setting comes from.</figcaption>
+      <figcaption>How the app reads its settings.</figcaption>
     </figure>
-    <p>A variable set in the real environment overrides the file. This lets a host inject secrets without writing them to disk. If you do not need that, keep everything in the file.</p>
+    <p>The file is the only source of settings. Environment variables do not override it. Unknown keys are refused, so a misspelt setting stops the app at start. Otherwise it would be silently ignored.</p>
 
     <h3 id="settings">Settings reference</h3>
     <div class="table-wrap">
     <table>
       <tr><th>Setting</th><th>Required</th><th>What it does</th></tr>
-      <tr><td><code>SLACK_BOT_TOKEN</code></td><td>Yes</td><td>The Bot User OAuth Token, <code>xoxb-…</code>. The app checks it with Slack when it starts, and stops if Slack rejects it.</td></tr>
-      <tr><td><code>SLACK_SIGNING_SECRET</code></td><td>Yes</td><td>Proves a request came from Slack. Requests with a wrong signature are refused with 401.</td></tr>
-      <tr><td><code>SLACK_UPDATES_CHANNEL</code></td><td>No</td><td>The channel <em>ID</em> reports are posted to, not its name. Open the channel's details in Slack; the ID is at the bottom. Empty means reports are not posted.</td></tr>
-      <tr><td><code>REDMINE_BASE_URL</code></td><td>Yes</td><td>Your Redmine's address, for example <code>https://redmine.example.com</code>.</td></tr>
-      <tr><td><code>PORT</code></td><td>No</td><td>The port the app listens on. Default <code>3000</code>.</td></tr>
-      <tr><td><code>PUBLIC_URL</code></td><td>No</td><td>The address people's browsers reach the app at. The <code>/dashboard</code> links are built from it. Default <code>http://localhost:PORT</code>, which only works on the server itself.</td></tr>
-      <tr><td><code>DB_PATH</code></td><td>No</td><td>The SQLite file. Default <code>./data/app.db</code>, relative to the working directory. Created on first start, with its tables.</td></tr>
-      <tr><td><code>SUBMISSION_REMINDER_CRON</code></td><td>No</td><td>When to DM people who have not submitted today, as a cron expression in <code>TZ</code>. <code>0 10 * * 1-5</code> is 10:00 on weekdays. Empty means no reminder.</td></tr>
-      <tr><td><code>TZ</code></td><td>No</td><td>The team's time zone, as an IANA name. It decides what "today" means for the reminder and the dashboard. Default <code>UTC</code>.</td></tr>
+      <tr><td><code>slack.botToken</code></td><td>Yes</td><td>The Bot User OAuth Token, <code>xoxb-…</code>. The app checks it with Slack when it starts, and stops if Slack rejects it.</td></tr>
+      <tr><td><code>slack.signingSecret</code></td><td>Yes</td><td>Proves a request came from Slack. Requests with a wrong signature are refused with 401.</td></tr>
+      <tr><td><code>slack.updatesChannel</code></td><td>No</td><td>The channel <em>ID</em> reports are posted to, not its name. Open the channel's details in Slack; the ID is at the bottom. Empty means reports are not posted.</td></tr>
+      <tr><td><code>redmine.baseUrl</code></td><td>Yes</td><td>Your Redmine's address, for example <code>https://redmine.example.com</code>.</td></tr>
+      <tr><td><code>server.port</code></td><td>No</td><td>The port the app listens on. Default <code>3000</code>.</td></tr>
+      <tr><td><code>server.publicUrl</code></td><td>No</td><td>The address people's browsers reach the app at. The <code>/dashboard</code> links are built from it. Default <code>http://localhost:&lt;port&gt;</code>, which only works on the server itself.</td></tr>
+      <tr><td><code>database.path</code></td><td>No</td><td>The SQLite file. Default <code>./data/app.db</code>, relative to the working directory. Created on first start, with its tables.</td></tr>
+      <tr><td><code>reminder.cron</code></td><td>No</td><td>When to DM people who have not submitted today, as a cron expression in <code>timeZone</code>. <code>"0 10 * * 1-5"</code> is 10:00 on weekdays. Empty means no reminder.</td></tr>
+      <tr><td><code>timeZone</code></td><td>No</td><td>The team's time zone, as an IANA name. It decides what "today" means for the reminder and the dashboard. Default <code>UTC</code>.</td></tr>
     </table>
     </div>
-    <p>The app validates every setting when it starts. If one is missing or malformed, it stops and names each one.</p>
+    <p>The app validates every setting when it starts. If one is missing or malformed, it stops and names each one by its path, for example <code>slack.botToken</code>.</p>
 
     <h2 id="run">5. Run it</h2>
     <pre><code class="language-bash">cd /opt/standup-bot
@@ -305,35 +311,35 @@ npm run build
 sudo systemctl restart standup-bot</code></pre>
     <p>The database schema is created with <code>CREATE TABLE IF NOT EXISTS</code>. An upgrade keeps your existing data.</p>
     <h3>Back up</h3>
-    <p>Everything worth keeping is in two places: <code>conf/app.env</code> and the database file. The database runs in SQLite's WAL mode, so while the app runs, recent writes may sit in <code>app.db-wal</code> beside it. Copying only <code>app.db</code> then misses them. Take a consistent copy with SQLite's own backup command instead:</p>
+    <p>Everything worth keeping is in two places: <code>conf/app.yaml</code> and the database file. The database runs in SQLite's WAL mode, so while the app runs, recent writes may sit in <code>app.db-wal</code> beside it. Copying only <code>app.db</code> then misses them. Take a consistent copy with SQLite's own backup command instead:</p>
     <pre><code class="language-bash">sqlite3 /opt/standup-bot/data/app.db ".backup '/backups/standup-$(date +%F).db'"</code></pre>
 
     <h2 id="development">Local development</h2>
     <p>For working on the code, not for production.</p>
-    <pre><code class="language-bash">cp -r conf-sample conf     # then fill in conf/app.env
+    <pre><code class="language-bash">cp -r conf-sample conf     # then fill in conf/app.yaml
 npm install
 npm run dev                # the app, restarting on change
 npm run dev:client         # the dashboard with hot reload: http://localhost:5173/dashboard/
 npm test                   # every test, server and client
 npm run typecheck          # tsc for the server, vue-tsc for the client</code></pre>
-    <p><code>dev:client</code> sends <code>/api</code> requests to the app on the port in <code>conf/app.env</code>, so run both. Slack still needs to reach the app over HTTPS to send it commands.</p>
+    <p><code>dev:client</code> sends <code>/api</code> requests to the app on the port in <code>conf/app.yaml</code>, so run both. Slack still needs to reach the app over HTTPS to send it commands.</p>
 
     <h2 id="troubleshooting">Troubleshooting</h2>
     <div class="table-wrap">
     <table>
       <tr><th>What you see</th><th>Cause and fix</th></tr>
-      <tr><td><code>No configuration at …/conf/app.env</code></td><td>The app was started from another folder, or <code>conf/</code> was never created. Start it from the install folder, or set <code>WorkingDirectory</code> in the service.</td></tr>
-      <tr><td><code>Invalid configuration …</code> listing settings</td><td>Those settings are missing or malformed. Fix them in <code>conf/app.env</code>. Check the environment too: it overrides the file.</td></tr>
-      <tr><td>The app exits at start with <code>invalid_auth</code></td><td>Slack rejected <code>SLACK_BOT_TOKEN</code>. Copy it again from <em>OAuth &amp; Permissions</em>. Reinstalling the app issues a new one.</td></tr>
-      <tr><td>Logs show <code>Signature mismatch</code>, and Slack says the app did not respond</td><td><code>SLACK_SIGNING_SECRET</code> is wrong, or the proxy changes the request body. Pass <code>/slack/</code> through untouched.</td></tr>
+      <tr><td><code>No configuration at …/conf/app.yaml</code></td><td>The app was started from another folder, or <code>conf/</code> was never created. Start it from the install folder, or set <code>WorkingDirectory</code> in the service.</td></tr>
+      <tr><td><code>Invalid configuration …</code> listing settings</td><td>Those settings are missing, malformed, or not a setting the app knows. Fix them in <code>conf/app.yaml</code>. An unknown key is usually a typo, or a key at the wrong indentation.</td></tr>
+      <tr><td>The app exits at start with <code>invalid_auth</code></td><td>Slack rejected <code>slack.botToken</code>. Copy it again from <em>OAuth &amp; Permissions</em>. Reinstalling the app issues a new one.</td></tr>
+      <tr><td>Logs show <code>Signature mismatch</code>, and Slack says the app did not respond</td><td><code>slack.signingSecret</code> is wrong, or the proxy changes the request body. Pass <code>/slack/</code> through untouched.</td></tr>
       <tr><td>"Your Slack account isn't linked to Redmine yet"</td><td>Run <a href="#link-users"><code>/link-redmine</code></a> for that person.</td></tr>
       <tr><td>The "Add issue" box never shows results</td><td>The options URL is missing. Set <em>Interactivity → Select Menus → Options Load URL</em> to <code>https://…/slack/events</code>.</td></tr>
       <tr><td>The status dropdown offers every status</td><td>Redmine returned no workflow list. It needs Redmine 5.0 or later, and the person needs permission to edit the issue.</td></tr>
       <tr><td>A submission shows "redmine sync failed" on the dashboard</td><td>Redmine refused that write. The reason is in the logs and in <code>submission_items.redmine_error</code>. The usual causes are a revoked API key, a missing <em>Add notes</em> permission, or a status change the workflow does not allow.</td></tr>
-      <tr><td>Reports do not appear in the channel</td><td><code>SLACK_UPDATES_CHANNEL</code> is empty or is a name rather than an ID, or the bot was never invited to the channel.</td></tr>
+      <tr><td>Reports do not appear in the channel</td><td><code>slack.updatesChannel</code> is empty or is a name rather than an ID, or the bot was never invited to the channel.</td></tr>
       <tr><td><code>/dashboard --p @jane</code> replies with the usage text</td><td>The command's <em>Escape channels, users, and links</em> setting is off. Turn it on, as <code>should_escape: true</code> in the manifest does.</td></tr>
       <tr><td>The dashboard says "Dashboard client is not built"</td><td>Run <code>npm run build</code> in the install folder.</td></tr>
-      <tr><td>The reminder arrives at the wrong hour, or "today" is off by a day</td><td><code>TZ</code> is not the team's time zone. Set it to the right IANA name.</td></tr>
+      <tr><td>The reminder arrives at the wrong hour, or "today" is off by a day</td><td><code>timeZone</code> is not the team's time zone. Set it to the right IANA name.</td></tr>
       <tr><td><code>npm ci</code> fails compiling <code>better-sqlite3</code></td><td>No prebuilt binary exists for this platform and Node version. Use a supported Node LTS, or install Python and a C++ compiler so npm can build it.</td></tr>
     </table>
     </div>

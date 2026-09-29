@@ -19,13 +19,13 @@ issue's status. On submit, every entry is written to its Redmine issue as a comm
    kept.
 7. On submit, each entry becomes a `PUT /issues/{id}.json`. The notes become a journal comment.
    A picked status becomes a status change. Issues are never reassigned.
-8. The report is posted to `SLACK_UPDATES_CHANNEL` and stored in SQLite.
+8. The report is posted to `slack.updatesChannel` and stored in SQLite.
 
 Writes use the developer's own API key. Redmine attributes each comment to them, not to a bot.
 
 ### "Today"
 
-`TZ` sets the team's time zone. Every "today" in the app is a day in that zone: the reminder,
+`timeZone` sets the team's time zone. Every "today" in the app is a day in that zone: the reminder,
 the dashboard's "submitted today", and the per-day chart. Timestamps are stored in UTC.
 
 ## Dashboard
@@ -41,7 +41,7 @@ cannot open a browser itself, so the button is a link.
 
 The dashboard is a Vue 3 app styled with Tailwind CSS 4. Vite builds it into `dist/dashboard`.
 The app server serves that build at `GET /dashboard` and its data at `GET /api/dashboard`. Both
-share the port Slack's requests arrive on. Set `PUBLIC_URL` to the address your team's browsers
+share the port Slack's requests arrive on. Set `server.publicUrl` to the address your team's browsers
 reach that server at.
 
 **The dashboard has no authentication.** Anyone with the URL can view it. Anyone who guesses a
@@ -64,14 +64,14 @@ no build step. Only the dashboard client is built.
 
 ```bash
 npm install
-cp -r conf-sample conf   # then fill in conf/app.env
+cp -r conf-sample conf   # then fill in conf/app.yaml
 npm run build            # builds the dashboard client
 npm start
 ```
 
-The app reads `conf/app.env` from the folder it is started in. `conf-sample/` is the committed
-template. `conf/` holds secrets, and git ignores it. A variable set in the real environment
-overrides the same name in the file.
+The app reads `conf/app.yaml` from the folder it is started in. `conf-sample/` is the committed
+template. `conf/` holds secrets, and git ignores it. The file is the only source of settings.
+Unknown keys are refused, so a typo stops the app at start.
 
 ### Development
 
@@ -82,14 +82,14 @@ npm test             # all tests, server and client
 npm run typecheck    # tsc for the server, vue-tsc for the client
 ```
 
-`dev:client` proxies `/api` to the app server on the `PORT` in `conf/app.env`, so run both.
+`dev:client` proxies `/api` to the app server on `server.port` in `conf/app.yaml`, so run both.
 
 ## Project structure
 
 ```
 src/
   app.ts                    # composition root: builds everything and wires it together
-  config.ts                 # reads conf/app.env and validates every setting, once
+  config.ts                 # reads conf/app.yaml and validates every setting, once
   lib/
     calendar.ts             # what "today" is, in the team's time zone
     db.ts                   # opens SQLite and applies the schema
@@ -118,8 +118,8 @@ src/
 Tests sit next to the code they cover, as `*.test.ts`.
 
 ```
-conf-sample/app.env         # configuration template, committed
-conf/app.env                # your configuration, ignored by git
+conf-sample/app.yaml        # configuration template, committed
+conf/app.yaml               # your configuration, ignored by git
 docs/guides/                # installation and user guides (HTML)
 ```
 

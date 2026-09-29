@@ -18,13 +18,13 @@ import { registerDashboardRoutes } from './web/server.ts';
 
 // The composition root: the only place concrete collaborators are built and wired.
 
-const config = loadConfigFrom(path.resolve(CONF_DIR), process.env);
+const config = loadConfigFrom(path.resolve(CONF_DIR));
 
 const calendar = new Calendar(config.timeZone);
-const db = openDatabase(config.dbPath);
+const db = openDatabase(config.database.path);
 const users = new UserStore(db);
 const submissions = new SubmissionStore(db, calendar);
-const tracker = new RedmineClient(config.redmineBaseUrl);
+const tracker = new RedmineClient(config.redmine.baseUrl);
 const standup = new StandupService(tracker, submissions);
 
 // ExpressReceiver rather than Bolt's default, so the dashboard shares Slack's server and port.
@@ -37,13 +37,13 @@ registerDashboardRoutes(
 
 const app = new App({ token: config.slack.botToken, receiver });
 registerStandupHandlers(app, { users, standup, tracker, updatesChannel: config.slack.updatesChannel });
-registerDashboardCommand(app, users, config.publicUrl);
+registerDashboardCommand(app, users, config.server.publicUrl);
 registerLinkRedmineCommand(app, users);
 
-if (config.reminderCron) {
+if (config.reminder.cron) {
   const reminder = new ReminderJob(users, submissions, new SlackMessenger(app.client));
-  cron.schedule(config.reminderCron, () => reminder.run(), { timezone: calendar.timeZone });
+  cron.schedule(config.reminder.cron, () => reminder.run(), { timezone: calendar.timeZone });
 }
 
-await app.start(config.port);
-console.log(`⚡️ Redmine standup bot running on port ${config.port}`);
+await app.start(config.server.port);
+console.log(`⚡️ Redmine standup bot running on port ${config.server.port}`);
