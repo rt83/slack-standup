@@ -1,7 +1,8 @@
 node_modules/
 dist/
 data/
-.env
+# Local configuration and secrets; conf-sample/ is the committed template.
+conf/
 
 # Harness is its own repo; .claude/skills holds junctions into it.
 internal-ai-harness/

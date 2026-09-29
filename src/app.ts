@@ -1,8 +1,7 @@
-import 'dotenv/config';
 import path from 'node:path';
 import { App, ExpressReceiver } from '@slack/bolt';
 import cron from 'node-cron';
-import { loadConfig } from './config.ts';
+import { CONF_DIR, loadConfigFrom } from './config.ts';
 import { Calendar } from './lib/calendar.ts';
 import { openDatabase } from './lib/db.ts';
 import { RedmineClient } from './lib/redmineClient.ts';
@@ -19,7 +18,7 @@ import { registerDashboardRoutes } from './web/server.ts';
 
 // The composition root: the only place concrete collaborators are built and wired.
 
-const config = loadConfig(process.env);
+const config = loadConfigFrom(path.resolve(CONF_DIR), process.env);
 
 const calendar = new Calendar(config.timeZone);
 const db = openDatabase(config.dbPath);

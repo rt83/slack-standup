@@ -48,17 +48,30 @@ reach that server at.
 `?user=` Slack ID can view that person's page. Before sharing it outside a trusted network, put
 it behind your SSO or reverse-proxy auth.
 
-## Setup
+## Documentation
+
+- [Installation guide](docs/guides/installation.html): the Slack app manifest, Redmine setup,
+  configuration, HTTPS, running as a service, backups and troubleshooting.
+- [User guide](docs/guides/user-guide.html): submitting an update, the dashboard, and linking
+  people to Redmine.
+
+The guides are HTML. Open them in a browser, from disk or from any static host.
+
+## Quick start
 
 Requires Node.js 22.18 or later. Node runs the TypeScript sources directly, so the server has
 no build step. Only the dashboard client is built.
 
 ```bash
 npm install
-cp .env.example .env   # fill in Slack and Redmine credentials
-npm run build          # builds the dashboard client
+cp -r conf-sample conf   # then fill in conf/app.env
+npm run build            # builds the dashboard client
 npm start
 ```
+
+The app reads `conf/app.env` from the folder it is started in. `conf-sample/` is the committed
+template. `conf/` holds secrets, and git ignores it. A variable set in the real environment
+overrides the same name in the file.
 
 ### Development
 
@@ -69,36 +82,14 @@ npm test             # all tests, server and client
 npm run typecheck    # tsc for the server, vue-tsc for the client
 ```
 
-`dev:client` proxies `/api` to the app server on `PORT`, so run both.
-
-### Slack app configuration (api.slack.com/apps)
-
-- **Slash Commands:** `/update`, `/dashboard`, `/link-redmine`
-- **Interactivity & Shortcuts:** enable it, and point the Request URL at
-  `https://<your-host>/slack/events`. Set the same URL as the **Select Menus** options load URL.
-- **Event Subscriptions:** subscribe to `app_home_opened`.
-- **OAuth Scopes (bot):** `commands`, `chat:write`, `im:write`, `users:read`
-- **App Home:** enable the Home Tab.
-
-### Linking developers to Redmine
-
-Each developer needs a personal Redmine API key. They find it under Redmine → My account → API
-access key. An admin links each person once:
-
-```
-/link-redmine @jane 42 abcdef0123456789...
-```
-
-**Anyone can run this command.** Whoever runs it can make Redmine attribute writes to another
-person's account. Add a Slack user ID allowlist before using it in a real workspace. The place to
-add it is marked in `src/slack/linkRedmineCommand.ts`.
+`dev:client` proxies `/api` to the app server on the `PORT` in `conf/app.env`, so run both.
 
 ## Project structure
 
 ```
 src/
   app.ts                    # composition root: builds everything and wires it together
-  config.ts                 # reads and validates the environment, once
+  config.ts                 # reads conf/app.env and validates every setting, once
   lib/
     calendar.ts             # what "today" is, in the team's time zone
     db.ts                   # opens SQLite and applies the schema
@@ -126,6 +117,12 @@ src/
 
 Tests sit next to the code they cover, as `*.test.ts`.
 
+```
+conf-sample/app.env         # configuration template, committed
+conf/app.env                # your configuration, ignored by git
+docs/guides/                # installation and user guides (HTML)
+```
+
 ## Known gaps
 
 - **Dashboard auth:** there is none. See the warning above.
@@ -134,8 +131,9 @@ Tests sit next to the code they cover, as `*.test.ts`.
 - **Two comments per issue per day.** Both sections start with the same issues, and notes are
   required. Every open issue therefore gets a "What I did" and a "What I am doing" comment on
   every submit.
-- **Large issue lists break the modal.** Each issue uses 4 blocks in each section. Slack allows
-  100 blocks per modal. Someone with about 12 or more open issues cannot open the form.
+- **Large issue lists break the modal.** Each issue uses 4 blocks in each section, plus 4 blocks
+  for the headers and search boxes. Slack allows 100 blocks per modal. Someone with 13 or more
+  open issues cannot open the form.
 - **Status IDs, not names.** The channel report and the dashboard show `status → 5`, not the
   status name.
 - **Dashboard scale:** the log shows the latest 50 submissions, with no paging.
