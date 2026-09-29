@@ -171,3 +171,78 @@ kbd { padding: 1px 6px; border: 1px solid var(--rule); border-bottom-width: 2px;
   nav.toc { position: static; max-height: none; }
   header.page h1 { font-size: 26px; }
 }
+
+/* --- Zoom viewer (see guide.js) --- */
+
+.zoomable { position: relative; cursor: zoom-in; }
+.zoomable:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+figure.zoomable::after {
+  content: "⤢ zoom";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  color: var(--ink-muted);
+  font: 12px "IBM Plex Mono", monospace;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+figure.zoomable:hover::after,
+figure.zoomable:focus-visible::after { opacity: 1; }
+
+html.zoom-open { overflow: hidden; }
+
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+/* display: flex above would otherwise override the hidden attribute. */
+.zoom-overlay[hidden] { display: none; }
+
+.zoom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--panel);
+}
+.zoom-toolbar button {
+  min-width: 36px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  font: 500 15px "IBM Plex Mono", monospace;
+  cursor: pointer;
+}
+.zoom-toolbar button:hover { border-color: var(--teal); color: var(--teal); }
+.zoom-level { min-width: 56px; text-align: center; font: 13px "IBM Plex Mono", monospace; color: var(--ink-muted); }
+
+.zoom-stage {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+.zoom-stage.dragging { cursor: grabbing; }
+.zoom-content { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+.zoom-content > svg, .zoom-content > img { display: block; user-select: none; -webkit-user-drag: none; }
+
+.zoom-hint {
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--rule);
+  background: var(--panel);
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
