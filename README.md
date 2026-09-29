@@ -1,121 +1,141 @@
 # Redmine Standup Bot
 
-Slack app that collects daily "What I did / What I am doing" reports,
-pre-filled with each developer's in-progress Redmine issues, lets them
-add extra issues (autocomplete) or change issue status inline, and writes
-the whole thing back to Redmine as journal comments.
+A Slack app for daily standups. Each developer reports "What I did" and "What I am doing".
+The form is pre-filled with their open Redmine issues. They can add more issues and change an
+issue's status. On submit, every entry is written to its Redmine issue as a comment.
 
 ## How it works
 
-1. Developer runs `/update` or clicks **Submit Daily Update** on the app's
-   Home tab.
-2. The bot looks up their Redmine API key (from the `users` table), pulls
-   their open/in-progress issues, and opens a modal with two sections
-   ("What I did" / "What I am doing"), each pre-filled with those issues.
-3. They can add more issues via an autocomplete (`external_select`) box —
-   these are visually marked 🆕 and grouped under "Manually added" (Block
-   Kit has no arbitrary text color, so this is emoji + grouping, not literal
-   color).
-4. Each issue row has a notes field and a status dropdown scoped to that
-   issue's actual Redmine workflow — it uses `allowed_statuses` from
-   Redmine's own issue-show response (the legal transitions for that
-   tracker + the user's role), falling back to the full status list only
-   if Redmine doesn't return that field.
-5. On submit: every touched issue gets a `PUT /issues/{id}.json` in Redmine
-   with the notes as a journal comment and the new status if one was picked.
-   No reassignment ever happens, regardless of how the issue got onto the
-   list. The formatted report is also posted to `SLACK_UPDATES_CHANNEL` and
-   logged locally for history/search.
+1. A developer runs `/update`, or clicks **Submit Daily Update** on the app's Home tab.
+2. The bot looks up their Redmine API key and fetches their open issues.
+3. A modal opens with two sections, "What I did" and "What I am doing". Both are filled with
+   those issues.
+4. The search box adds more issues by number or title. Added issues are marked 🆕 and listed
+   under "Manually added". Block Kit has no text colour, so emoji and grouping stand in for it.
+5. Each issue row has a notes field and a status dropdown. The dropdown lists the statuses this
+   developer may move the issue to under its tracker's workflow. Redmine returns them as
+   `allowed_statuses`. When Redmine returns none, the full status list is offered instead.
+6. Adding an issue re-renders the modal. Notes already typed and statuses already picked are
+   kept.
+7. On submit, each entry becomes a `PUT /issues/{id}.json`. The notes become a journal comment.
+   A picked status becomes a status change. Issues are never reassigned.
+8. The report is posted to `SLACK_UPDATES_CHANNEL` and stored in SQLite.
+
+Writes use the developer's own API key. Redmine attributes each comment to them, not to a bot.
+
+### "Today"
+
+`TZ` sets the team's time zone. Every "today" in the app is a day in that zone: the reminder,
+the dashboard's "submitted today", and the per-day chart. Timestamps are stored in UTC.
 
 ## Dashboard
 
-`/dashboard` posts a link button to a real web page (no more modal) —
-Slack can't literally "open a browser" from the bot side, so the pattern
-is: bot replies with a button whose `url` opens in the person's own
-browser.
+`/dashboard` replies with a button that opens the web dashboard in the person's browser. A bot
+cannot open a browser itself, so the button is a link.
 
-- `/dashboard` → team-wide view: submission trend, issue composition
-  (assigned vs. manually added), who hasn't submitted today, and a
-  chronological log of every submission (expand a row to see the actual
-  did/doing items).
-- `/dashboard --p @jane` → the same page scoped to Jane only. The `--p`
-  value must be an `@mention` (Slack sends it as `<@U0123ABC|jane>` in the
-  command text) — plain `--p jane` won't resolve to a user.
+- `/dashboard` opens the team view. It shows the submission trend, who has not submitted today,
+  and a log of every submission. Expand a row to see its items.
+- `/dashboard --p @jane` opens the same page scoped to Jane. It shows how many of her issues
+  were assigned and how many she added by hand. The value must be an `@mention`. Slack sends a
+  mention as `<@U0123ABC|jane>`. A plain `--p jane` does not name a user and is refused.
 
-The dashboard is served by the same Express server Slack's Events API
-uses (`ExpressReceiver`), at `GET /dashboard` — set `PUBLIC_URL` in `.env`
-to wherever that server is actually reachable from your team's browsers.
+The dashboard is a Vue 3 app styled with Tailwind CSS 4. Vite builds it into `dist/dashboard`.
+The app server serves that build at `GET /dashboard` and its data at `GET /api/dashboard`. Both
+share the port Slack's requests arrive on. Set `PUBLIC_URL` to the address your team's browsers
+reach that server at.
 
-**No auth on the dashboard route yet.** Anyone with the URL (or who
-guesses a `?user=` Slack ID) can view it. Before sharing outside a trusted
-network, put it behind your normal SSO/reverse-proxy auth, or add a
-signed, short-lived token to the link Slack posts.
+**The dashboard has no authentication.** Anyone with the URL can view it. Anyone who guesses a
+`?user=` Slack ID can view that person's page. Before sharing it outside a trusted network, put
+it behind your SSO or reverse-proxy auth.
 
 ## Setup
 
+Requires Node.js 22.18 or later. Node runs the TypeScript sources directly, so the server has
+no build step. Only the dashboard client is built.
+
 ```bash
 npm install
-cp .env.example .env   # fill in Slack + Redmine credentials
+cp .env.example .env   # fill in Slack and Redmine credentials
+npm run build          # builds the dashboard client
 npm start
 ```
+
+### Development
+
+```bash
+npm run dev          # the app server, restarting on change
+npm run dev:client   # the dashboard with hot reload at http://localhost:5173/dashboard/
+npm test             # all tests, server and client
+npm run typecheck    # tsc for the server, vue-tsc for the client
+```
+
+`dev:client` proxies `/api` to the app server on `PORT`, so run both.
 
 ### Slack app configuration (api.slack.com/apps)
 
 - **Slash Commands:** `/update`, `/dashboard`, `/link-redmine`
-- **Interactivity & Shortcuts:** enable, point Request URL at
-  `https://<your-host>/slack/events`
-- **Event Subscriptions:** subscribe to `app_home_opened`
+- **Interactivity & Shortcuts:** enable it, and point the Request URL at
+  `https://<your-host>/slack/events`. Set the same URL as the **Select Menus** options load URL.
+- **Event Subscriptions:** subscribe to `app_home_opened`.
 - **OAuth Scopes (bot):** `commands`, `chat:write`, `im:write`, `users:read`
-- **App Home:** enable Home Tab
+- **App Home:** enable the Home Tab.
 
 ### Linking developers to Redmine
 
-Each developer needs a personal Redmine API key (Redmine → My account →
-API access key) so comments/status changes are attributed to them, not a
-shared bot account. An admin runs, once per person:
+Each developer needs a personal Redmine API key. They find it under Redmine → My account → API
+access key. An admin links each person once:
 
 ```
 /link-redmine @jane 42 abcdef0123456789...
 ```
 
-This is a placeholder command — lock it down with an admin allowlist
-before using in a real workspace (see comment in `src/app.js`).
+**Anyone can run this command.** Whoever runs it can make Redmine attribute writes to another
+person's account. Add a Slack user ID allowlist before using it in a real workspace. The place to
+add it is marked in `src/slack/linkRedmineCommand.ts`.
 
 ## Project structure
 
 ```
 src/
-  app.js                    # entrypoint, slash commands, cron reminder
+  app.ts                    # composition root: builds everything and wires it together
+  config.ts                 # reads and validates the environment, once
   lib/
-    db.js                   # sqlite: user mapping + submission history
-    redmineClient.js        # Redmine REST API wrapper
-  blocks/
-    modalBuilder.js         # Block Kit modal construction
-  handlers/
-    openModal.js            # opens the pre-filled modal
-    optionsLoad.js          # autocomplete for "+ Add issue"
-    addIssueAction.js       # rebuilds modal when an issue is added
-    viewSubmission.js       # parses submission, writes to Redmine, posts report
+    calendar.ts             # what "today" is, in the team's time zone
+    db.ts                   # opens SQLite and applies the schema
+    userStore.ts            # Slack-to-Redmine account links
+    submissionStore.ts      # submissions, their items, and the per-day queries
+    redmineClient.ts        # IssueTracker interface and its Redmine REST implementation
+  standup/
+    types.ts                # sections, issue origins, a form entry
+    standupForm.ts          # the modal's Block Kit: builds it and reads it back
+    standupService.ts       # fills the form from Redmine; turns a submission into Redmine writes
+    report.ts               # the channel report and the Redmine comment text
+    reminderJob.ts          # DMs whoever has not submitted today
+  slack/
+    standupHandlers.ts      # /update, Home tab, issue search, add issue, submit
+    dashboardCommand.ts     # /dashboard
+    linkRedmineCommand.ts   # /link-redmine
+    mentions.ts             # reads a user id from an escaped @mention
+    slackMessenger.ts       # sends DMs for the reminder
   web/
-    server.js               # GET /dashboard route, queries + assembles data
-    render.js                # dashboard HTML template (Chart.js trend + composition charts)
+    dashboardData.ts        # the API contract, as a zod schema shared by server and client
+    dashboard.ts            # assembles the dashboard data
+    server.ts               # GET /dashboard, GET /api/dashboard, and the link Slack posts
+    client/                 # the Vue app
 ```
 
-## Known gaps / next steps
+Tests sit next to the code they cover, as `*.test.ts`.
 
-- **Dashboard auth:** see the warning above — there isn't any yet.
-- **Dashboard scale:** the log queries the last 50 submissions per page
-  load with no pagination UI; fine for a small team, add a "load more" /
-  date-range picker before this gets used by a large org.
-- **Partial state preservation:** `views.update` replaces the whole modal.
-  `addIssueAction.js` re-injects notes text so adding an issue doesn't wipe
-  what's already typed, but a selected (not-yet-submitted) status dropdown
-  value isn't re-injected yet — same technique, just needs `initial_option`
-  wired up from `currentValues`.
-- **Timezone-aware "submitted today":** `hasSubmittedToday` checks UTC date;
-  fine for one-timezone teams, needs adjusting if your team spans zones.
-- **Admin lock on `/link-redmine`:** no auth check yet — add a Slack user ID
-  allowlist before deploying.
-- **Redmine status ID literalism:** the report posted to Slack currently
-  shows `status → 5` (raw ID) rather than the status name — worth mapping
-  back through `getIssueStatuses` before formatting.
+## Known gaps
+
+- **Dashboard auth:** there is none. See the warning above.
+- **`/link-redmine` has no admin check.** See the warning above.
+- **API keys are stored in plain text** in the `users` table.
+- **Two comments per issue per day.** Both sections start with the same issues, and notes are
+  required. Every open issue therefore gets a "What I did" and a "What I am doing" comment on
+  every submit.
+- **Large issue lists break the modal.** Each issue uses 4 blocks in each section. Slack allows
+  100 blocks per modal. Someone with about 12 or more open issues cannot open the form.
+- **Status IDs, not names.** The channel report and the dashboard show `status → 5`, not the
+  status name.
+- **Dashboard scale:** the log shows the latest 50 submissions, with no paging.

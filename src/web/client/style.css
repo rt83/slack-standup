@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/*
+ * A daily engineering log, not a SaaS metrics page: the look borrows from a ledger —
+ * hairline rules, no shadows. Plex Sans carries text; Plex Mono carries anything that is
+ * data (issue ids, timestamps, counts).
+ *
+ * `static` so every colour is emitted as a CSS variable even if no class uses it: the
+ * charts read them at runtime (see theme.ts), which keeps this the one palette.
+ */
+@theme static {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-paper: #eef1f4;
+  --color-panel: #ffffff;
+  --color-ink: #1b2430;
+  --color-ink-muted: #5b6675;
+  --color-rule: rgb(27 36 48 / 0.12);
+  --color-teal: #1c7c8c;
+  --color-amber: #c97c2a;
+  --color-green: #3f7d52;
+  --color-rust: #b14a3a;
+}
