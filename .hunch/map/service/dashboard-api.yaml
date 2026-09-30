@@ -1,0 +1,35 @@
+id: dashboard-api
+kind: service
+within: team-dashboard
+aliases:
+  - dashboard server
+  - /api/dashboard
+summary: "The server half of the dashboard: GET /api/dashboard builds the page's data from the stores, and GET /dashboard serves the built Vue client. It is mounted on the same Express router Bolt serves Slack from. It also owns the dashboard URL shape that the Slack command links to."
+purpose: "Answer the browser with the dashboard page and its data, scoped to the team or one person; and build the link Slack posts."
+owns:
+  - "the /dashboard page route and its static assets"
+  - "the /api/dashboard JSON route"
+  - "the scope (team or person) and the trend window read from the query string"
+  - the JSON contract shared with the client
+does_not_own:
+  - "the SQL behind each number (record-store)"
+  - "drawing the page (dashboard-client)"
+why:
+  text: "Mounted on the receiver's router rather than its own server, so the app runs on one port behind one public address. dashboardUrl is the only place the link is built and readDashboardQuery the only place it is read, so the link Slack posts and the scope the server shows always match. A missing client build answers 503 with the fix, not a blank page."
+  evidence:
+    - src/web/server.ts#registerDashboardRoutes
+    - src/web/server.ts#dashboardUrl
+    - src/app.ts
+invariants:
+  - text: "The trend window is kept between 1 and 90 days, defaulting to 14."
+    evidence:
+      - src/web/server.ts#readDashboardQuery
+roots:
+  - src/web/server.ts
+  - src/web/dashboard.ts
+  - src/web/dashboardData.ts
+entry:
+  - src/web/server.ts#registerDashboardRoutes
+  - src/web/server.ts#dashboardUrl
+depends:
+  - record-store

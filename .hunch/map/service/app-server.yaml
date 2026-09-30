@@ -1,0 +1,31 @@
+id: app-server
+kind: service
+within: app-runtime
+aliases:
+  - app.ts
+  - node process
+summary: "The one Node process: it loads conf/app.yaml, builds the calendar, database, stores, tracker client and services, mounts the dashboard on Bolt's Express receiver, registers the Slack handlers, schedules the reminder and starts listening. Node runs its TypeScript directly, with no server build."
+purpose: "Start the product: validate settings, construct every concrete collaborator exactly once, wire them, and serve Slack and the dashboard on one port."
+owns:
+  - loading and validating configuration
+  - constructing concrete classes
+  - the reminder schedule
+  - the port the app listens on
+does_not_own:
+  - "any behaviour of the parts it wires (the other sub-systems)"
+why:
+  text: "One composition root keeps construction out of policy code, so every other module can be given stand-ins in tests. Bolt's ExpressReceiver is used instead of its default receiver so the dashboard routes share Slack's server and port. The config schema is both the validator and the source of the Config type, and environment variables no longer override the file, so there is one source of settings."
+  evidence:
+    - src/app.ts
+    - 083c4bd
+invariants:
+  - text: "Only app.ts builds concrete collaborators; other modules receive them."
+    evidence:
+      - src/app.ts
+roots:
+  - src/app.ts
+  - src/config.ts
+  - vite.config.ts
+entry:
+  - src/config.ts#loadConfigFrom
+  - src/config.ts#parseConfig

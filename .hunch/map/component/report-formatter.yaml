@@ -1,0 +1,23 @@
+id: report-formatter
+kind: component
+within: standup-core
+aliases:
+  - report
+summary: "Writes the two texts a submission produces: the Slack mrkdwn report for the updates channel, and the journal comment put on each Redmine issue. The report marks hand-added issues with 🆕 and shows a picked status as its number."
+responsibility: "Format a submission's entries as the channel report and as one Redmine comment per entry."
+owns:
+  - "the report's layout: title, one block per section, one line per issue"
+  - "the comment prefix [Daily Update - <section title>]"
+does_not_own:
+  - "sending either text (standup-handlers, redmine-rest-client)"
+why:
+  text: "Both texts come from the same entries and the same section titles, so they are kept together as pure functions and tested without Slack or Redmine. The comment carries the section title so a reader of the issue history can tell a \"did\" note from a \"doing\" note."
+  evidence:
+    - src/standup/report.ts#formatIssueNote
+    - "src/standup/report.test.ts#formatReport > lists each section, marks hand-added issues, and shows picked statuses"
+code:
+  - src/standup/report.ts#formatReport
+  - src/standup/report.ts#formatIssueNote
+interface:
+  - src/standup/report.ts#formatReport
+  - src/standup/report.ts#formatIssueNote

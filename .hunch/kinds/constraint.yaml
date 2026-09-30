@@ -1,0 +1,46 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: constraint
+description: >
+  A limit or watch-out anyone changing this area must respect: rate
+  limits, size caps, ordering requirements, concurrency hazards, API
+  quirks.
+scope: [sub-system, service, component]
+freshness: normative
+verify: schema + resolution + semantic
+fields:
+  rule:      { type: text, required: true, depth: "one sentence", hint: "State it as something to do or avoid." }
+  category:  { type: enum, enum: [limit, ordering, concurrency, compatibility, security, external-api], required: true }
+  why:       { type: reasoning, required: true, depth: "two to four sentences naming what breaks when the rule is broken", hint: "Why the rule holds here." }
+  applies:   { anchor: [symbol, field, config-key, call-site], many: true, required: true }
+  limit:     { type: text, hint: "The number and unit, if there is one." }
+  evidence:  { anchor: [test, commit, config-key], many: true, hint: "What shows the constraint is real." }
+examples:
+  good:
+    id: measure-after-fonts
+    kind: constraint
+    within: render-service
+    summary: >-
+      Blocks are measured only after web fonts have loaded. Measuring earlier caches heights taken with a
+      fallback font, and every page after the first is laid out against the wrong heights.
+    rule: Never measure a block before document.fonts.ready resolves; schedule the pass after it.
+    category: ordering
+    why:
+      text: >-
+        A fallback font is narrower, so text measured with it wraps onto fewer lines; the cache keeps
+        those heights and pages overflow once the real font arrives. It was the cause of the "last line
+        cut off" reports.
+      evidence: [src/layout/measure.ts#invalidate, 3f8a61d]
+    applies: [src/layout/measure.ts#measureBlock]
+    evidence: [3f8a61d]
+  bad:
+    item:
+      id: fonts
+      kind: constraint
+      within: render-service
+      summary: Be careful with fonts.
+      rule: Fonts matter.
+      category: ordering
+      why: { text: Fonts can cause problems., inferred: true }
+      applies: [src/layout/measure.ts#measureBlock]
+    why_bad: >-
+      A rule nobody could check a change against, and a why that names no consequence.

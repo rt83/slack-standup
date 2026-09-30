@@ -1,0 +1,18 @@
+id: stable-form-metadata
+kind: constraint
+within: standup-core
+aliases:
+  - private_metadata shape
+summary: "The modal's private_metadata keeps the shape {did: {manualIds}, doing: {manualIds}}. A modal opened before a deploy is submitted after it, so the new code must read the old shape."
+rule: "Do not change the private_metadata shape or the block and action ids in a way the previous release's open modals cannot be read by."
+category: compatibility
+why:
+  text: "readStandupForm parses the metadata with a schema and throws on a shape it did not write. A person who opened the form before a deploy and submits after it would lose their update. The shape was kept through the TypeScript rewrite for this reason."
+  evidence:
+    - src/standup/standupForm.ts#metadataSchema
+    - "src/standup/standupForm.test.ts#standup form > refuses metadata it did not write"
+applies:
+  - src/standup/standupForm.ts#metadataSchema
+  - src/standup/standupForm.ts#readStandupForm
+evidence:
+  - "src/standup/standupForm.test.ts#standup form > refuses metadata it did not write"

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "hunch": {
+      "command": "hunch",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

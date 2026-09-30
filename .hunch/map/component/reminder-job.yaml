@@ -1,0 +1,30 @@
+id: reminder-job
+kind: component
+within: standup-core
+aliases:
+  - reminder
+summary: "Sends a DM to every linked person who has not submitted today. It asks the submission store who submitted today in the team's time zone, and skips those people. A failed DM is logged and the loop goes on."
+responsibility: "Decide who has not submitted today and send each of them the reminder text."
+owns:
+  - the reminder text
+  - "who is reminded: linked people with no submission today"
+does_not_own:
+  - "when it runs: the cron schedule lives in app.ts"
+  - "how a DM is sent (slack-messenger, behind DirectMessenger)"
+  - "what \"today\" means (calendar)"
+why:
+  text: "It takes a DirectMessenger instead of the Slack client, so it is tested without Slack. It reads today's submitters from the same store and calendar as the dashboard's missing list, so the two always agree on who is missing. One person's blocked DM must not stop everyone else's reminder."
+  evidence:
+    - src/standup/reminderJob.ts#ReminderJob.run
+    - "src/standup/reminderJob.test.ts#ReminderJob > DMs only the people who have not submitted today, and carries on past a failed DM"
+code:
+  - src/standup/reminderJob.ts#ReminderJob
+  - src/standup/reminderJob.ts#ReminderJob.run
+  - src/standup/reminderJob.ts#DirectMessenger
+  - src/standup/reminderJob.ts#REMINDER_TEXT
+interface:
+  - src/standup/reminderJob.ts#ReminderJob.run
+  - src/standup/reminderJob.ts#DirectMessenger
+depends:
+  - submission-store
+  - user-store

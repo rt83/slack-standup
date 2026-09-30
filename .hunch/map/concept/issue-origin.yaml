@@ -1,0 +1,22 @@
+id: issue-origin
+kind: concept
+within: daily-standup
+aliases:
+  - assigned vs added
+  - manually added
+  - is_manual
+summary: "Every issue on an update either came from the person's open assigned issues or was added by hand from the search box. Hand-added issues are marked 🆕 in the form and the report. The dashboard's person view shows the mix, as a sign of how much work happens outside assignment."
+meaning: "'assigned' means the issue came from the person's open Redmine issues. 'added' means they picked it from the search box."
+why_it_matters:
+  text: "The form groups added issues under \"Manually added\" and marks them with an emoji, since Block Kit has no text colour. The origin is stored as is_manual on each item and counted for the dashboard's composition chart. Slack does not return it, so it has to travel in the modal's private_metadata."
+  evidence:
+    - src/standup/types.ts#ISSUE_ORIGINS
+    - src/standup/standupForm.ts#metadataSchema
+    - src/lib/submissionStore.ts#SubmissionStore.originCounts
+common_mistake:
+  text: "Working out origin from the input values alone. They only name the issue id, so an added issue would read back as assigned."
+  evidence:
+    - src/standup/standupForm.ts#readStandupForm
+where:
+  - src/standup/types.ts#ISSUE_ORIGINS
+  - src/standup/types.ts#IssueOrigin

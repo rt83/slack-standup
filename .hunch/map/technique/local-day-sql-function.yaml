@@ -1,0 +1,18 @@
+id: local-day-sql-function
+kind: technique
+within: record-store
+aliases:
+  - local_day()
+summary: "The submission store registers the Calendar's dayOf as a SQLite function, local_day(), so SQL can group and filter by the team's day. Each query also has a coarse UTC lower bound, so SQLite compares text before calling into JavaScript."
+pattern: other
+purpose:
+  text: "Grouping by day in JavaScript would load every row, and grouping with SQLite's date() would use UTC days. A registered function keeps SQL doing the grouping while day logic stays in one place. The lower bound, two days wider than needed, keeps the rows passed through local_day() to a small window."
+  evidence:
+    - src/lib/submissionStore.ts#SubmissionStore
+    - src/lib/calendar.ts#Calendar.lowerBoundFor
+implements:
+  - src/lib/submissionStore.ts#SubmissionStore
+  - src/lib/submissionStore.ts#SubmissionStore.submittersToday
+  - src/lib/submissionStore.ts#SubmissionStore.dailyCounts
+caveats:
+  - "The function is registered per connection by the store's constructor; a query run on another connection has no local_day()."

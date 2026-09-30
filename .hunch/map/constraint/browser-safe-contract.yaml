@@ -1,0 +1,14 @@
+id: browser-safe-contract
+kind: constraint
+within: team-dashboard
+summary: "dashboardData.ts is bundled into the browser client as well as run on the server, so it and everything it imports must stay free of Node-only modules. Today it imports only zod and the standup types."
+rule: "Import nothing Node-only (fs, path, better-sqlite3, Bolt) into src/web/dashboardData.ts or anything it imports."
+category: compatibility
+why:
+  text: "Vite bundles the file for the Vue client. A Node-only import breaks the client build, or ships server code to the browser. It also pulls in src/standup/types.ts, so that file carries the same rule."
+  evidence:
+    - src/web/dashboardData.ts#dashboardDataSchema
+    - src/web/client/dashboardApi.ts#loadDashboard
+applies:
+  - src/web/dashboardData.ts#dashboardDataSchema
+  - src/standup/types.ts#SECTIONS

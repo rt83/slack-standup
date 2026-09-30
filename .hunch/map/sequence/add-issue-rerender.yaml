@@ -1,0 +1,58 @@
+id: add-issue-rerender
+kind: sequence
+within: update-collection
+aliases:
+  - add issue
+  - issue search
+summary: "How a person adds an issue by hand: the search box asks the tracker for matches, and picking one re-renders the whole modal. The re-render reads back what was already typed and picked, fetches the added issue, and rebuilds the view with the draft restored."
+trigger: src/slack/standupHandlers.ts#registerStandupHandlers
+participants:
+  - standup-handlers
+  - standup-form
+  - standup-service
+  - redmine-rest-client
+rationale:
+  text: "Slack's views.update replaces the whole view, so anything typed would be lost unless it is read back first and carried in as the draft. The form is read before the service is called because the service needs both the added ids (from metadata) and the draft entries. Issues already on the list are not added twice, because their block ids would collide."
+  evidence:
+    - src/slack/standupHandlers.ts#registerStandupHandlers
+    - src/standup/standupService.ts#StandupService.addIssue
+    - f7feae5
+steps:
+  - n: 1
+    from: standup-handlers
+    to: redmine-rest-client
+    call: src/slack/standupHandlers.ts#registerStandupHandlers > searchIssues#1
+    handler: src/lib/redmineClient.ts#RedmineClient.searchIssues
+    mode: async
+    why:
+      text: "Answered from Slack's options load for the external select; a failure answers with no options so the box stays usable."
+      evidence:
+        - src/slack/standupHandlers.ts#registerStandupHandlers
+  - n: 2
+    from: standup-handlers
+    to: standup-form
+    call: src/slack/standupHandlers.ts#registerStandupHandlers > sectionOfAddIssueBlock#1
+    handler: src/standup/standupForm.ts#sectionOfAddIssueBlock
+    mode: sync
+  - n: 3
+    from: standup-handlers
+    to: standup-form
+    call: src/slack/standupHandlers.ts#registerStandupHandlers > readStandupForm#1
+    handler: src/standup/standupForm.ts#readStandupForm
+    mode: sync
+  - n: 4
+    from: standup-handlers
+    to: standup-service
+    call: src/slack/standupHandlers.ts#registerStandupHandlers > addIssue#1
+    handler: src/standup/standupService.ts#StandupService.addIssue
+    mode: async
+  - n: 5
+    from: standup-handlers
+    to: standup-form
+    call: src/slack/standupHandlers.ts#registerStandupHandlers > buildStandupView#2
+    handler: src/standup/standupForm.ts#buildStandupView
+    mode: sync
+    why:
+      text: "The draft passed through addIssue becomes initial values in the new view, which is how typed notes and picked statuses survive the re-render."
+      evidence:
+        - "src/standup/standupForm.test.ts#standup form > restores a draft on re-render: notes and the picked status"

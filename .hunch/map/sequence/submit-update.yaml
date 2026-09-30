@@ -1,0 +1,67 @@
+id: submit-update
+kind: sequence
+within: update-collection
+aliases:
+  - submit
+  - view_submission
+summary: "What happens when a person presses Submit: the form is read back into entries, the update is recorded, each entry is written to its issue as a comment (with a status change if one was picked), and the report goes to the channel. Writes run in parallel, and a failed one is recorded against its item without stopping the rest."
+trigger: src/slack/standupHandlers.ts#registerStandupHandlers
+participants:
+  - standup-handlers
+  - standup-form
+  - standup-service
+  - report-formatter
+  - redmine-rest-client
+rationale:
+  text: "The report is formatted and the submission recorded (by the submission store, in standup-records) before any tracker write. The update is then safe even if Redmine is down, and each item's sync flag shows what reached Redmine. Tracker writes run in parallel under the person's own key, so their name is on each comment. The channel post comes last, after the writes have been attempted."
+  evidence:
+    - src/standup/standupService.ts#StandupService.submit
+    - "src/standup/standupService.test.ts#StandupService > records a failed Redmine write and still writes the rest"
+steps:
+  - n: 1
+    from: standup-handlers
+    to: standup-form
+    call: src/slack/standupHandlers.ts#registerStandupHandlers > readStandupForm#2
+    handler: src/standup/standupForm.ts#readStandupForm
+    mode: sync
+    why:
+      text: "Hand-added issue ids come from private_metadata, not the input values, so the origin of each entry can only be known by reading both together here."
+      evidence:
+        - src/standup/standupForm.ts#metadataSchema
+  - n: 2
+    from: standup-handlers
+    to: standup-service
+    call: src/slack/standupHandlers.ts#registerStandupHandlers > submit#1
+    handler: src/standup/standupService.ts#StandupService.submit
+    mode: async
+  - n: 3
+    from: standup-service
+    to: report-formatter
+    call: src/standup/standupService.ts#StandupService.submit > formatReport#1
+    handler: src/standup/report.ts#formatReport
+    mode: sync
+    why:
+      text: "The report is built before recording because the submissions row stores its text."
+      evidence:
+        - src/lib/submissionStore.ts#SubmissionStore.record
+  - n: 4
+    from: standup-service
+    to: report-formatter
+    call: src/standup/standupService.ts#StandupService.submit > formatIssueNote#1
+    handler: src/standup/report.ts#formatIssueNote
+    mode: sync
+  - n: 5
+    from: standup-service
+    to: redmine-rest-client
+    call: src/standup/standupService.ts#StandupService.submit > updateIssue#1
+    handler: src/lib/redmineClient.ts#RedmineClient.updateIssue
+    mode: async
+    why:
+      text: "One write per entry, all started together; a failure is caught per entry so the others still go through."
+      evidence:
+        - src/standup/standupService.ts#StandupService.submit
+hazards:
+  - kind: timeout
+    steps:
+      - 5
+    note: "Slack's ack is sent before the writes, so a slow Redmine does not fail the submit in Slack, but the person gets no message about failed writes; they appear only in the server log and in submission_items.redmine_error."

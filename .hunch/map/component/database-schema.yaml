@@ -1,0 +1,23 @@
+id: database-schema
+kind: component
+within: record-store
+aliases:
+  - openDatabase
+  - schema
+summary: "Opens the SQLite file (creating its folder if needed), turns on WAL, and applies the schema for users, submissions and submission_items. There is no migration step: the schema is idempotent CREATE TABLE IF NOT EXISTS."
+responsibility: "Open the app's SQLite database with its schema applied."
+owns:
+  - the three tables and their columns
+  - "WAL journal mode"
+does_not_own:
+  - "any query (user-store, submission-store)"
+why:
+  text: "A single SQLite file needs no database server for a small team's bot. CREATE TABLE IF NOT EXISTS makes every start safe on a new or an existing file. Columns that are no longer written (issue_subject, old_status_id) are kept so existing databases still match the schema."
+  evidence:
+    - src/lib/db.ts#SCHEMA
+    - src/lib/db.ts#openDatabase
+code:
+  - src/lib/db.ts#SCHEMA
+  - src/lib/db.ts#openDatabase
+interface:
+  - src/lib/db.ts#openDatabase

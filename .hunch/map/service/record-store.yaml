@@ -1,0 +1,36 @@
+id: record-store
+kind: service
+within: standup-records
+aliases:
+  - sqlite
+  - stores
+summary: "The SQLite layer: it opens the database with its schema, and exposes a user store for account links and a submission store for submissions and their per-day questions. The submission store counts days through the team's Calendar."
+purpose: "Give the Slack side, the reminder and the dashboard typed reads and writes over users, submissions and submission items, with days in the team's time zone."
+owns:
+  - "the schema: users, submissions, submission_items"
+  - account link upserts and lookups
+  - recording a submission and each item's sync outcome
+  - "per-day counts, today's submitters, origin counts and the recent log"
+  - the team's calendar day
+does_not_own:
+  - "what a submission contains or how it is built (standup-core)"
+  - "the dashboard's JSON shape (dashboard-api)"
+why:
+  text: "Stores are classes over one shared database handle, built once in app.ts. Callers take only the methods they need through Pick<>, so the reminder sees submittersToday and nothing else. Day logic sits in one Calendar that the store also registers into SQL as local_day(), so SQL grouping and JS checks give the same day."
+  evidence:
+    - src/lib/submissionStore.ts#SubmissionStore
+    - src/standup/reminderJob.ts#ReminderJob
+invariants:
+  - text: "The schema only grows with CREATE TABLE IF NOT EXISTS and never drops columns; unused columns such as issue_subject and old_status_id are kept so existing databases still match."
+    evidence:
+      - src/lib/db.ts#SCHEMA
+roots:
+  - src/lib/db.ts
+  - src/lib/submissionStore.ts
+  - src/lib/userStore.ts
+  - src/lib/calendar.ts
+entry:
+  - src/lib/db.ts#openDatabase
+  - src/lib/submissionStore.ts#SubmissionStore
+  - src/lib/userStore.ts#UserStore
+  - src/lib/calendar.ts#Calendar

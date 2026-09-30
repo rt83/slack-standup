@@ -1,0 +1,47 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: sub-system
+description: >
+  A group of services that together deliver part of a business
+  capability, such as the render pipeline or the sync layer.
+scope: [business]
+freshness: structural
+verify: schema + resolution
+fields:
+  purpose:      { type: text, required: true, depth: "one or two sentences", hint: "Its role in the whole: what it does for the parts around it, and what it hands on." }
+  owns:         { type: text, many: true, hint: "What it is responsible for, as the rest of the system relies on it." }
+  does_not_own: { type: text, many: true, hint: "What people might expect here but lives elsewhere, and where." }
+  why:          { type: reasoning, required: true, depth: "two to five sentences naming what would be harder without the boundary, or the split it was chosen over", hint: "Why this is one sub-system, and why its boundary is here." }
+  invariants:   { type: reasoning, many: true, depth: "one sentence stating what must stay true, then why", hint: "What must stay true across its services." }
+  roots:        { anchor: [directory, file], many: true, required: true }
+examples:
+  good:
+    id: layout-engine
+    kind: sub-system
+    within: paginated-documents
+    summary: >-
+      Turns a document's blocks into pages: it measures blocks, splits the ones that do not fit, and
+      schedules the passes. Everything a reader sees on a page was placed here; export only copies it.
+    purpose: Decide where every block of the document lands on which page, and hand finished pages to rendering and export.
+    owns: [block measurement, page splitting, scheduling layout passes]
+    does_not_own: [drawing pages (the renderer), file formats (export)]
+    why:
+      text: >-
+        Layout is kept apart from rendering so that one placement serves the screen, print and export
+        alike; when layout lived in the renderer, PDF pages broke in different places from the screen.
+      evidence: [docs/architecture.md#layout, a41c9e2]
+    invariants:
+      - text: Layout never reads the DOM for anything but measurement, so a pass gives the same pages on every target.
+        evidence: [src/layout/measure.ts#measureBlock]
+    roots: [src/layout, src/render, src/table]
+  bad:
+    item:
+      id: layout
+      kind: sub-system
+      within: paginated-documents
+      summary: Handles layout.
+      purpose: Layout.
+      why: { text: It does the layout., inferred: true }
+      roots: [src/layout]
+    why_bad: >-
+      "Handles" with no object, a purpose that restates the name, nothing about what it owns or leaves
+      to others, and a why that says what, not why.

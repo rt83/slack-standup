@@ -1,0 +1,35 @@
+id: user-store
+kind: component
+within: record-store
+aliases:
+  - UserStore
+  - account links
+summary: "Stores the link from each Slack user to their Redmine user id, API key and display name. The form, the reminder, the dashboard and the commands all look people up here. A link is upserted, so running /link-redmine again replaces it."
+responsibility: "Upsert, find and list Slack-to-Redmine account links."
+owns:
+  - "the users table rows"
+  - "the display name fallback: the Slack id when no name is stored"
+does_not_own:
+  - "checking that a key works or that the caller may link it (nothing does)"
+why:
+  text: "Each person's own API key is what lets Redmine attribute comments to them, so it is kept per person rather than as one bot key in config. Linking is an upsert on the Slack id, so fixing a wrong key is the same command as linking."
+  evidence:
+    - src/lib/userStore.ts#LinkedUser
+    - src/lib/userStore.ts#UserStore.link
+invariants:
+  - text: "API keys are stored in plain text; anyone with the database file has every linked person's Redmine access."
+    evidence:
+      - src/lib/db.ts#SCHEMA
+      - README.md#known-gaps
+code:
+  - src/lib/userStore.ts#UserStore
+  - src/lib/userStore.ts#UserStore.link
+  - src/lib/userStore.ts#UserStore.find
+  - src/lib/userStore.ts#UserStore.list
+  - src/lib/userStore.ts#toLinkedUser
+interface:
+  - src/lib/userStore.ts#UserStore.link
+  - src/lib/userStore.ts#UserStore.find
+  - src/lib/userStore.ts#UserStore.list
+depends:
+  - database-schema

@@ -1,0 +1,35 @@
+id: standup-core
+kind: service
+within: update-collection
+aliases:
+  - standup domain
+  - src/standup
+summary: "The standup's rules as a library: what the form holds and how it is read back, how the form is filled from the tracker, what a submission writes, and what the report and the reminder say. Slack handlers call it; it calls the tracker and the submission store only through narrow interfaces."
+purpose: "Give the Slack layer a finished modal to show, a parsed form state to act on, and a submit that records the update and writes it to the tracker; and give the scheduler a reminder job."
+owns:
+  - "the two sections (did / doing) and the two issue origins (assigned / added)"
+  - the standup modal's Block Kit, its ids and private metadata
+  - filling the form from the tracker and adding issues to it
+  - recording a submission, then writing each entry to the tracker
+  - the channel report text and the issue comment text
+  - who gets a reminder
+does_not_own:
+  - "talking to Slack (slack-app)"
+  - "HTTP to Redmine (redmine-integration)"
+  - "SQL (record-store)"
+why:
+  text: "The rules are kept free of Slack and Redmine clients so they can be tested with stand-ins; StandupService takes an IssueTracker and a SubmissionRecorder rather than building them. The reminder takes a DirectMessenger for the same reason. The form module is the single definition of the modal's wire format, so building a view and reading it back cannot drift apart."
+  evidence:
+    - src/standup/standupService.ts#StandupService
+    - src/standup/reminderJob.ts#DirectMessenger
+    - f7feae5
+roots:
+  - src/standup
+entry:
+  - src/standup/standupService.ts#StandupService
+  - src/standup/standupForm.ts#buildStandupView
+  - src/standup/standupForm.ts#readStandupForm
+  - src/standup/reminderJob.ts#ReminderJob
+depends:
+  - redmine-integration
+  - record-store

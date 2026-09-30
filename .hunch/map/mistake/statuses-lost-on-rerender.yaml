@@ -1,0 +1,17 @@
+id: statuses-lost-on-rerender
+kind: mistake
+within: standup-core
+summary: "Adding an issue re-rendered the modal and reset every status dropdown the person had already picked. Typed notes survived, but statuses did not."
+symptom: "After adding an issue, previously picked statuses were back to empty."
+cause:
+  text: "views.update replaces the whole view, so every value has to be restored from the draft. Notes were restored as initial_value, but the picked status was not restored as initial_option. The dropdown looks optional, so an empty one was easy to miss."
+  evidence:
+    - f7feae5
+    - src/standup/standupForm.ts#issueBlocks
+lesson: "When adding an input to the form, restore it from the draft in issueBlocks and extend the re-render test to cover it."
+fix:
+  - f7feae5
+regression:
+  - "src/standup/standupForm.test.ts#standup form > restores a draft on re-render: notes and the picked status"
+area:
+  - standup-form

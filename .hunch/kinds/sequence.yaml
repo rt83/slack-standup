@@ -1,0 +1,96 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: sequence
+description: >
+  An ordered interaction between components that accomplishes one task,
+  including branches and concurrency.
+scope: [sub-system, service]
+freshness: code-tracking
+verify: schema + resolution + grounding
+fields:
+  trigger:
+    anchor: symbol
+    required: true
+    hint: "Entry point: route handler, event listener, job."
+  participants:
+    ref: component
+    many: true
+    required: true
+  rationale:
+    type: reasoning
+    required: true
+    depth: "two to four sentences naming why it runs in this order and mode, or what the order prevents"
+    hint: "Why the flow is shaped this way."
+  steps:
+    many: true
+    required: true
+    fields:
+      n:       { type: int, required: true }
+      from:    { ref: "@participants", required: true }
+      to:      { ref: "@participants", required: true }
+      call:    { anchor: call-site, required: true }
+      handler: { anchor: symbol }
+      mode:    { type: enum, enum: [sync, async, event, queued] }
+      returns: { anchor: type }
+      why:     { type: reasoning, depth: "one or two sentences", hint: "Only where the step's order or mode matters: what would break otherwise." }
+  fragments:
+    many: true
+    hint: "UML-style blocks over a range of steps."
+    fields:
+      type:    { type: enum, enum: [alt, opt, loop, par], required: true }
+      steps:   { type: int-range, required: true, hint: "Written 2-4." }
+      guard:   { anchor: branch, required: true }
+      note:    { type: text }
+  hazards:
+    many: true
+    verify: semantic
+    fields:
+      kind:     { type: enum, enum: [race, reentrancy, ordering, timeout], required: true }
+      steps:    { type: int-list, required: true }
+      resource: { anchor: [field, symbol] }
+      note:     { type: text, required: true }
+notes: >
+  Anchor every step's call site. Add the handler only when it is where
+  the behavior lives. Leave trivial glue out rather than anchoring it.
+examples:
+  good:
+    id: page-render
+    kind: sequence
+    within: render-service
+    summary: >-
+      An edit becomes new pages: the editor asks the scheduler for a pass, and at the next frame the split
+      pass lays out from the earliest changed block, repeating while a page overflows. It is the path
+      every keystroke takes, so its order decides both correctness and frame time.
+    trigger: src/editor/events.ts#onContentChange
+    participants: [editor, scheduler, table-splitter]
+    rationale:
+      text: >-
+        The pass is queued, not run on the edit, so several edits in one frame cost one pass; it starts
+        from the earliest changed block because pages before it cannot change.
+      evidence: [src/render/scheduler.ts#schedule, 5e1b2c9]
+    steps:
+      - n: 1
+        from: editor
+        to: scheduler
+        call: "src/editor/events.ts#onContentChange > schedule#1"
+        handler: src/render/scheduler.ts#schedule
+        mode: queued
+        why:
+          text: Queued so a burst of keystrokes costs one pass per frame.
+          evidence: [5e1b2c9]
+      - { n: 2, from: scheduler, to: table-splitter, call: "src/render/scheduler.ts#flush > splitPass#1", handler: src/layout/split.ts#splitPass, mode: sync }
+    fragments:
+      - { type: loop, steps: 2-2, guard: "src/render/scheduler.ts#flush > while#1", note: "repeat while a page overflows" }
+  bad:
+    item:
+      id: render-flow
+      kind: sequence
+      within: render-service
+      summary: The render flow.
+      trigger: src/editor/events.ts#onContentChange
+      participants: [editor, scheduler]
+      rationale: { text: This is the render flow., inferred: true }
+      steps:
+        - { n: 1, from: editor, to: scheduler, call: "src/editor/events.ts#onContentChange > schedule#1" }
+    why_bad: >-
+      The steps are listed, but nothing says why they run in this order or mode, and the rationale
+      restates the name.

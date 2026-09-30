@@ -1,0 +1,55 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: data-flow
+description: >
+  How one piece of data moves between components: its shape, who
+  produces and consumes it, the contract that validates it, and where
+  it changes hands.
+scope: [sub-system, service]
+freshness: code-tracking
+verify: schema + resolution + grounding
+fields:
+  payload:   { anchor: type, required: true }
+  producer:  { ref: component, required: true }
+  consumer:  { ref: component, many: true, required: true }
+  contract:  { anchor: [symbol, type], hint: "Serializer, validator, or schema that enforces the shape." }
+  handoff:   { anchor: call-site, many: true, required: true, hint: "Where the data is passed, published, or written." }
+  transport: { type: enum, enum: [in-process, http, queue, event, storage, ipc] }
+  rationale: { type: reasoning, required: true, depth: "two to four sentences naming why the data takes this route and shape, or the route it was chosen over", hint: "Why the data moves this way." }
+  transforms:
+    many: true
+    fields:
+      at:    { anchor: [symbol, call-site], required: true }
+      note:  { type: text, required: true }
+      why:   { type: reasoning, depth: "one or two sentences", hint: "Why the data changes shape here, when it is not obvious." }
+examples:
+  good:
+    id: measured-block-heights
+    kind: data-flow
+    within: layout-engine
+    summary: >-
+      Measured block heights flow from the measurement cache to the split pass, which is the only reader.
+      Keeping heights in one place means a pass never measures the same block twice.
+    payload: src/layout/cache.ts#BlockCache
+    producer: measurement-cache
+    consumer: [table-splitter]
+    handoff: ["src/layout/split.ts#splitPass > measureBlock#1"]
+    transport: in-process
+    rationale:
+      text: >-
+        The split pass asks the cache instead of measuring itself, so a height taken once serves every
+        page decision in the pass; before, the splitter and the scheduler each measured and disagreed.
+      evidence: [7d2e4a1]
+  bad:
+    item:
+      id: heights
+      kind: data-flow
+      within: layout-engine
+      summary: Heights go to the splitter.
+      payload: src/layout/cache.ts#BlockCache
+      producer: measurement-cache
+      consumer: [table-splitter]
+      handoff: ["src/layout/split.ts#splitPass > measureBlock#1"]
+      rationale: { text: The splitter needs heights., inferred: true }
+    why_bad: >-
+      The rationale says what, not why: nothing explains why heights take this route, what it prevents,
+      or what else was tried.

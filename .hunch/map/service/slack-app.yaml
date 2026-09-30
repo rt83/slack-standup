@@ -1,0 +1,38 @@
+id: slack-app
+kind: service
+within: update-collection
+aliases:
+  - slack handlers
+  - bolt app
+summary: "The Slack-facing layer: it registers the slash commands, the Home tab, the issue search, the add-issue action and the modal submit with Bolt. Each handler acknowledges Slack, turns the payload into a call on the standup core or a store, and sends the reply. It holds no standup rules of its own."
+purpose: "Receive every Slack request the app answers and hand it to standup-core or the user store; send views, replies, channel reports and DMs back through Slack's Web API."
+owns:
+  - "the /update, /dashboard and /link-redmine commands"
+  - the app_home_opened event and the Home tab
+  - the add-issue options load and selection
+  - posting the finished report to the updates channel
+  - sending reminder DMs (SlackMessenger)
+  - reading user ids out of escaped mentions
+does_not_own:
+  - "the modal's blocks and ids (standup-core, standup-form)"
+  - "what a submission writes to the tracker (standup-core, standup-service)"
+  - "the dashboard's URL shape (dashboard-api, dashboardUrl)"
+why:
+  text: "Kept as thin glue over Bolt so everything with logic in it can be tested without Slack. The commit that set this up notes that handler registration has no test of its own because every function it calls is tested. Argument parsing is split into pure functions (parseDashboardArgs, parseLinkRedmineArgs, parseMention) so the refusal rules are tested directly."
+  evidence:
+    - f7feae5
+    - src/slack/dashboardCommand.ts#parseDashboardArgs
+    - src/slack/linkRedmineCommand.ts#parseLinkRedmineArgs
+invariants:
+  - text: "Every handler calls ack() before any slow work, because Slack drops a request not acknowledged within three seconds."
+    inferred: true
+roots:
+  - src/slack
+entry:
+  - src/slack/standupHandlers.ts#registerStandupHandlers
+  - src/slack/dashboardCommand.ts#registerDashboardCommand
+  - src/slack/linkRedmineCommand.ts#registerLinkRedmineCommand
+depends:
+  - standup-core
+  - redmine-integration
+  - record-store

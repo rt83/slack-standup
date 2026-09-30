@@ -1,0 +1,25 @@
+id: daily-standup
+kind: business
+aliases:
+  - standup bot
+  - daily update
+summary: "Developers give their daily standup in Slack, as \"What I did\" and \"What I am doing\" against their own Redmine issues, and each note lands on its issue as a comment in their name. The team sees the finished report in a channel. A lead sees who has not reported and the trend on a web dashboard."
+purpose: Let a developer give the daily standup in one Slack form, starting from their open issues. The same words go to the team channel and onto each issue's history.
+users:
+  - developers giving their daily update
+  - team leads following who reported and what changed
+  - the admin who links each person to their issue-tracker account
+why:
+  text: "Without it, a standup is said once in a meeting or a chat and never reaches the issues it is about. People then write the same progress twice, or the issue history goes stale. Starting the form from the person's own open issues keeps the update tied to real work. Writing each note in the person's own name means the history shows who said what. A daily nudge and a missing list keep the habit going."
+  evidence:
+    - README.md#redmine-standup-bot
+    - README.md#how-it-works
+not_promised:
+  - "Access control on the dashboard: anyone with the link can view it, and anyone who guesses a person's id can view theirs."
+  - "One comment per issue per day: each open issue gets a \"did\" and a \"doing\" comment on every submit."
+  - "People with 13 or more open issues can open the form; Slack's size limit stops them."
+  - Status names in the report and on the dashboard; both show the status number.
+  - Reassigning issues; an update never changes who an issue belongs to.
+entry:
+  - src/app.ts
+  - src/slack/standupHandlers.ts#registerStandupHandlers

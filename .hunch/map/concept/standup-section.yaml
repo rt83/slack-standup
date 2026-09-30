@@ -1,0 +1,23 @@
+id: standup-section
+kind: concept
+within: daily-standup
+aliases:
+  - did / doing
+  - What I did
+  - What I am doing
+summary: "A daily update has two halves, \"What I did\" and \"What I am doing\", in that order. Both start with the same open issues, so every issue can get a note in each. The section decides a row's label, its comment prefix in Redmine, and where it shows in the report."
+meaning: "One of the two fixed halves of a daily update, 'did' or 'doing'. Each has its own title and its own issue rows."
+why_it_matters:
+  text: "Block ids, the comment prefix, the report layout, the database CHECK constraint and the dashboard schema all enumerate the sections. SECTIONS in types.ts is the one list they are built from."
+  evidence:
+    - src/standup/types.ts#SECTIONS
+    - src/lib/db.ts#SCHEMA
+    - src/web/dashboardData.ts#dashboardDataSchema
+common_mistake:
+  text: "Assuming an issue gets one comment per day. Both sections are seeded with the same issues and notes are required, so each open issue gets two comments on every submit."
+  evidence:
+    - README.md#known-gaps
+where:
+  - src/standup/types.ts#SECTIONS
+  - src/standup/types.ts#Section
+  - src/standup/types.ts#SECTION_TITLES

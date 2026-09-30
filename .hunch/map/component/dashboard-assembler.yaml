@@ -1,0 +1,30 @@
+id: dashboard-assembler
+kind: component
+within: dashboard-api
+aliases:
+  - DashboardService
+summary: "Builds one DashboardData for a scope, team or person: the focus (missing list or the person), today's submitted count, the per-day counts, the origin counts and the latest 50 submissions with names attached. It returns null for a person who is not linked."
+responsibility: "Assemble the dashboard's data for a scope from the user and submission stores."
+owns:
+  - "what the team view and the person view each show"
+  - "the log limit (50) and the trend defaults (14 days, at most 90)"
+  - "reducing a linked user to id and display name"
+does_not_own:
+  - "reading the scope from a request (dashboard-routes)"
+  - "the SQL behind each number (submission-store)"
+why:
+  text: "The team view shows who is missing; a person view has nobody to list as missing, so it shows the person's assigned vs added mix instead. People are mapped through toPerson, so an API key never reaches the page. Submissions from someone no longer linked still show, under their Slack id."
+  evidence:
+    - src/web/dashboard.ts#DashboardService.build
+    - src/web/dashboard.ts#toPerson
+    - "src/web/dashboard.test.ts#DashboardService > sends data the client schema accepts, and never an API key"
+code:
+  - src/web/dashboard.ts#DashboardService
+  - src/web/dashboard.ts#DashboardService.build
+  - src/web/dashboard.ts#toPerson
+  - src/web/dashboard.ts#DashboardScope
+interface:
+  - src/web/dashboard.ts#DashboardService.build
+depends:
+  - submission-store
+  - user-store

@@ -1,0 +1,40 @@
+id: redmine-rest-client
+kind: component
+within: redmine-integration
+aliases:
+  - RedmineClient
+  - IssueTracker
+summary: "Implements the IssueTracker interface over Redmine's REST API with axios. It sends the person's key in X-Redmine-API-Key and checks every response with zod. It fills each assigned issue with its own fetch, to get allowed_statuses. It looks up a bare number before searching subjects, and caches the global status list."
+responsibility: "Carry out each IssueTracker operation as Redmine REST calls under the given API key, and return checked, app-shaped issues."
+owns:
+  - "the request parameters: assigned_to_id=me, status_id=open, include=allowed_statuses, subject=~text"
+  - "the result limits: 50 assigned issues, 15 search results"
+  - the process-wide status list cache
+  - "a 10-second request timeout"
+does_not_own:
+  - "choosing which statuses the dropdown offers (standup-form)"
+why:
+  text: "Redmine's issue list leaves out allowed_statuses, so each assigned issue is fetched on its own to get the statuses this person may move it to. Subject search never matches an issue number, so a bare number is fetched directly first and merged without duplicates. A number the person cannot see is skipped, and the subject search still runs."
+  evidence:
+    - src/lib/redmineClient.ts#RedmineClient.listAssignedOpenIssues
+    - src/lib/redmineClient.ts#RedmineClient.searchIssues
+    - "src/lib/redmineClient.test.ts#RedmineClient > looks a bare number up directly, then by subject, without duplicates"
+invariants:
+  - text: "allowedStatuses is null when Redmine did not say, and never an empty list standing in for \"unknown\", so the form knows to fall back."
+    evidence:
+      - src/lib/redmineClient.ts#toIssue
+      - "src/lib/redmineClient.test.ts#RedmineClient > reports unknown allowed statuses as null, not as none"
+  - text: "A status is sent in an update only when one was picked; otherwise the PUT carries notes alone."
+    evidence:
+      - src/lib/redmineClient.ts#RedmineClient.updateIssue
+code:
+  - src/lib/redmineClient.ts#IssueTracker
+  - src/lib/redmineClient.ts#RedmineClient
+  - src/lib/redmineClient.ts#RedmineClient.listAssignedOpenIssues
+  - src/lib/redmineClient.ts#RedmineClient.searchIssues
+  - src/lib/redmineClient.ts#RedmineClient.getIssue
+  - src/lib/redmineClient.ts#RedmineClient.listStatuses
+  - src/lib/redmineClient.ts#RedmineClient.updateIssue
+  - src/lib/redmineClient.ts#toIssue
+interface:
+  - src/lib/redmineClient.ts#IssueTracker

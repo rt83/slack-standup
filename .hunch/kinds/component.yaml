@@ -1,0 +1,51 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: component
+description: >
+  A module or class with one clear responsibility inside a service.
+  Sequences and flows use components as their participants.
+scope: [service]
+freshness: code-tracking
+verify: schema + resolution + grounding
+fields:
+  responsibility: { type: text, required: true, depth: "one sentence", hint: "Its one job, as the code around it relies on it; if it needs 'and', consider two components." }
+  owns:           { type: text, many: true, hint: "State or decisions only it holds." }
+  does_not_own:   { type: text, many: true, hint: "What people might expect here but lives elsewhere, and where." }
+  why:            { type: reasoning, required: true, depth: "two to five sentences naming what breaks or gets slower without it, or the design it was chosen over", hint: "Why it exists, and why it has this shape." }
+  invariants:     { type: reasoning, many: true, depth: "one sentence stating what must stay true, then why", hint: "What must stay true; cite what enforces it, or mark it inferred." }
+  code:           { anchor: [file, symbol], many: true, required: true }
+  interface:      { anchor: symbol, many: true, hint: "What other components call." }
+  depends:        { ref: component, many: true }
+examples:
+  good:
+    id: measurement-cache
+    kind: component
+    within: render-service
+    summary: >-
+      Caches each block's measured height so a layout pass measures only the blocks that changed. It is
+      why typing in a long document costs one block's measurement, not the whole document's.
+    responsibility: Keep a measured height per block, and drop it when the block, the page width or the fonts change.
+    owns: [the height of every measured block]
+    does_not_own: [deciding page breaks (table-splitter, split pass)]
+    why:
+      text: >-
+        Measuring a block means a DOM read, and a pass that measured every block took over 50 ms on a
+        200-page document. Caching by block and invalidating on the three things that change a height
+        keeps a pass proportional to the edit.
+      evidence: [src/layout/cache.ts#BlockCache, 7d2e4a1]
+    invariants:
+      - text: A cached height is dropped whenever fonts finish loading, or text measured with a fallback font would be kept.
+        evidence: [src/layout/measure.ts#invalidate]
+    code: [src/layout/cache.ts#BlockCache, src/layout/measure.ts#measureBlock, src/layout/measure.ts#invalidate]
+    interface: [src/layout/measure.ts#measureBlock]
+  bad:
+    item:
+      id: cache
+      kind: component
+      within: render-service
+      summary: Manages the cache.
+      responsibility: Caching.
+      why: { text: For performance., inferred: true }
+      code: [src/layout/cache.ts]
+    why_bad: >-
+      "Manages" with no object, a responsibility that restates the name, a why too vague to act on, and
+      code that points at a file instead of the classes it is made of.

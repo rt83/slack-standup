@@ -1,0 +1,42 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: business
+description: >
+  A business capability the product offers. The top of the map; it
+  explains why the code exists, not how it works.
+scope: [root]
+freshness: structural
+verify: schema
+fields:
+  purpose:      { type: text, required: true, depth: "one or two sentences", hint: "What someone can do with the product here, as a new teammate would need it said." }
+  users:        { type: text, many: true, hint: "Who relies on this capability." }
+  why:          { type: reasoning, required: true, depth: "two to five sentences naming what its users could not do without it, or what goes wrong", hint: "Why the capability matters to its users." }
+  not_promised: { type: text, many: true, hint: "What people might assume it does but it does not." }
+  entry:        { anchor: [directory, file, symbol], many: true, hint: "Optional; where the capability starts in code." }
+examples:
+  good:
+    id: paginated-documents
+    kind: business
+    summary: >-
+      People read and print long documents as fixed pages in the browser, laid out the way a word
+      processor would. It is what the product is bought for: every other capability is content or
+      export on these pages.
+    purpose: Turn a long document into clean, printable pages without the author fixing page breaks by hand.
+    users: [people writing reports and contracts, developers embedding the viewer]
+    why:
+      text: >-
+        Browsers give an endless scroll, so a document meant for print loses control of where a line,
+        a table row or a footnote lands. Taking layout back from the browser is the product's reason to
+        exist; doing it in real DOM rather than canvas keeps selection, search and accessibility.
+      evidence: [README.md#why]
+    not_promised: [Word's exact line breaks]
+    entry: [src/render/scheduler.ts#schedule]
+  bad:
+    item:
+      id: pagination
+      kind: business
+      summary: Pagination support.
+      purpose: Documents are paginated.
+      why: { text: Needed for pagination., inferred: true }
+    why_bad: >-
+      The summary and purpose restate the name, nothing says who relies on it or what they can count
+      on, and the why says what instead of why.

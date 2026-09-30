@@ -1,0 +1,52 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: entity
+description: >
+  A persistent or long-lived domain object: its type, where it is
+  stored, the invariants it must keep, and its lifecycle.
+scope: [sub-system, service]
+freshness: code-tracking
+verify: schema + resolution + grounding
+fields:
+  type:       { anchor: type, required: true }
+  why:        { type: reasoning, required: true, depth: "two to four sentences naming what the rest of the system relies on it for", hint: "Why this object exists as its own entity." }
+  storage:    { anchor: [type, file, config-key], many: true, hint: "Table, schema file, collection." }
+  key_fields: { anchor: field, many: true }
+  invariants:
+    many: true
+    fields:
+      rule:      { type: text, required: true }
+      enforced:  { anchor: [symbol, branch, test], many: true, hint: "Leave empty if nothing enforces it; that is worth knowing." }
+      why:       { type: reasoning, depth: "one or two sentences naming what breaks when it does not hold", hint: "Why the rule must hold." }
+  lifecycle:  { type: text, hint: "Created by, mutated by, deleted by." }
+examples:
+  good:
+    id: page
+    kind: entity
+    within: layout-engine
+    summary: >-
+      A laid-out page: its size, the blocks placed on it and where each starts. Rendering, export and
+      page numbering all read pages, so a page must never hold a block that overflows it.
+    type: src/model/page.ts#Page
+    why:
+      text: >-
+        Renderers and export read pages rather than re-running layout, which is what lets a PDF match the
+        screen. A page is the one record of a placement decision.
+      evidence: [docs/architecture.md#pages]
+    key_fields: [src/model/page.ts#Page.height]
+    invariants:
+      - rule: The blocks on a page never add up to more than its height.
+        enforced: [src/layout/split.ts#splitPass]
+        why:
+          text: A renderer draws what the page holds; an overflowing page prints its last line off the paper.
+          inferred: true
+    lifecycle: Created by the split pass, replaced whole by the next pass, never edited in place.
+  bad:
+    item:
+      id: page-model
+      kind: entity
+      within: layout-engine
+      summary: The page model.
+      type: src/model/page.ts#Page
+      why: { text: Pages are stored here., inferred: true }
+    why_bad: >-
+      Restates the name, gives no invariant a change could break, and a why that says where, not why.

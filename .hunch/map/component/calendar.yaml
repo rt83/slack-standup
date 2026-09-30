@@ -1,0 +1,35 @@
+id: calendar
+kind: component
+within: record-store
+aliases:
+  - Calendar
+  - today
+summary: "The single answer to \"which day is it?\": it names the day of any instant in the team's time zone, lists the last N days, and gives a safe lower-bound instant for a day window. The reminder, the dashboard and the per-day chart all go through one instance."
+responsibility: "Turn instants into the team's calendar days, and produce day windows, in the configured time zone."
+owns:
+  - the team's calendar day of any instant
+  - "stepping over days without DST errors"
+  - "the two-spare-days lower bound for day queries"
+does_not_own:
+  - "which time zone: it comes from config.timeZone (config-loader)"
+why:
+  text: "Before it existed, the reminder, the dashboard and the chart mixed UTC and server-local days and disagreed. One instance in the team's zone makes them agree. lastDays steps on the calendar date rather than subtracting 24 hours, which lands on the wrong day across a DST change. The clock is injectable, so tests fix \"now\"."
+  evidence:
+    - src/lib/calendar.ts#Calendar
+    - src/lib/calendar.ts#Calendar.lastDays
+    - "src/lib/calendar.test.ts#Calendar > lists the last N days oldest first, one per calendar day across a DST change"
+invariants:
+  - text: "lowerBoundFor(n) is never later than the start of the day n days back, because a local day can start up to 14 hours before or 12 after UTC midnight."
+    evidence:
+      - src/lib/calendar.ts#Calendar.lowerBoundFor
+code:
+  - src/lib/calendar.ts#Calendar
+  - src/lib/calendar.ts#Calendar.today
+  - src/lib/calendar.ts#Calendar.dayOf
+  - src/lib/calendar.ts#Calendar.lastDays
+  - src/lib/calendar.ts#Calendar.lowerBoundFor
+interface:
+  - src/lib/calendar.ts#Calendar.today
+  - src/lib/calendar.ts#Calendar.dayOf
+  - src/lib/calendar.ts#Calendar.lastDays
+  - src/lib/calendar.ts#Calendar.lowerBoundFor

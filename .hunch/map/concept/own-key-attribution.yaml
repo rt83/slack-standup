@@ -1,0 +1,21 @@
+id: own-key-attribution
+kind: concept
+within: daily-standup
+aliases:
+  - personal API key
+  - acting as the person
+summary: "The bot never acts in Redmine as itself: every read and write uses the person's own API key, stored when they were linked. Redmine then shows each comment and status change as theirs, and only offers them issues and statuses they may see and use."
+meaning: "Each tracker call is made with the requesting person's own Redmine API key, so Redmine treats it as that person's action."
+why_it_matters:
+  text: "The issue history must show who reported what, and the status dropdown must follow that person's workflow permissions. That is why IssueTracker takes a key on every call, and why UserStore keeps a key per person rather than one bot key in config."
+  evidence:
+    - src/lib/redmineClient.ts#IssueTracker
+    - src/lib/userStore.ts#LinkedUser
+    - README.md#how-it-works
+common_mistake:
+  text: "Treating /link-redmine as harmless setup. With no admin check, whoever runs it decides whose key a Slack user writes with, so it can put words in someone else's name."
+  evidence:
+    - src/slack/linkRedmineCommand.ts#registerLinkRedmineCommand
+where:
+  - src/lib/redmineClient.ts#IssueTracker
+  - src/lib/userStore.ts#LinkedUser.redmineApiKey

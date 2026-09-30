@@ -1,0 +1,36 @@
+id: config-loader
+kind: component
+within: app-server
+aliases:
+  - config.ts
+  - conf/app.yaml
+summary: "Reads conf/app.yaml from the working directory and validates it with a strict zod schema that also defines the Config type. Missing optional values become unset. publicUrl defaults to localhost on the configured port. Every error names its setting by path."
+responsibility: "Turn conf/app.yaml into one validated, typed Config, or stop the app with a message naming each bad setting."
+owns:
+  - "the settings and their defaults (port 3000, ./data/app.db, UTC)"
+  - refusing unknown keys
+  - checking the time zone is a real IANA zone
+  - "the dev proxy's port lookup, which works on a half-filled file"
+does_not_own:
+  - "using the settings (composition in src/app.ts)"
+why:
+  text: "Strict objects refuse unknown keys because an unknown key is almost always a typo, and a silently ignored setting is worse than a failed start. Environment variables do not override the file: with nested YAML that would need a second mapping of names, two sources for the same settings, and a stray TZ or PORT could change the app unseen. serverPortIn reads only server.port, so the dev proxy works before the rest of the file is filled in."
+  evidence:
+    - src/config.ts#configSchema
+    - src/config.ts#serverPortIn
+    - 083c4bd
+invariants:
+  - text: "conf-sample/app.yaml is valid and sets every setting the app reads; a test checks it against the schema."
+    evidence:
+      - "src/config.test.ts#conf folder > ships a sample that is valid and sets every setting the app reads"
+code:
+  - src/config.ts#configSchema
+  - src/config.ts#parseConfig
+  - src/config.ts#loadConfigFrom
+  - src/config.ts#readConfFile
+  - src/config.ts#serverPortIn
+  - src/config.ts#Config
+interface:
+  - src/config.ts#loadConfigFrom
+  - src/config.ts#readConfFile
+  - src/config.ts#serverPortIn

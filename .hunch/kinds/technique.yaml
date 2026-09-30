@@ -1,0 +1,41 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: technique
+description: >
+  A deliberate implementation pattern and why it's there: queuing,
+  batching, caching, retries, debouncing, optimistic updates.
+scope: [sub-system, service, component]
+freshness: code-tracking
+verify: schema + resolution + grounding
+fields:
+  pattern:    { type: enum, enum: [queue, batch, cache, retry, debounce, backpressure, idempotency, optimistic, other], required: true }
+  purpose:    { type: reasoning, required: true, depth: "two to four sentences naming what would break or slow down without it", hint: "What would break without it." }
+  implements: { anchor: [symbol, call-site], many: true, required: true }
+  tuning:     { anchor: config-key, many: true, hint: "Batch sizes, TTLs, retry counts." }
+  caveats:    { type: text, many: true }
+examples:
+  good:
+    id: frame-batching
+    kind: technique
+    within: render-service
+    summary: >-
+      Layout requests are batched per animation frame: the scheduler keeps the earliest changed block and
+      runs one pass from it when the frame starts. It is what keeps typing smooth however fast edits come.
+    pattern: batch
+    purpose:
+      text: >-
+        Without batching, each keystroke ran a full pass and a fast typist triggered three passes a frame;
+        one pass from the earliest change covers all of them in one frame's budget.
+      evidence: [src/render/scheduler.ts#schedule, 5e1b2c9]
+    implements: [src/render/scheduler.ts#schedule, src/render/scheduler.ts#flush]
+    caveats: [A request made during a pass waits for the next frame.]
+  bad:
+    item:
+      id: batching
+      kind: technique
+      within: render-service
+      summary: Uses batching.
+      pattern: batch
+      purpose: { text: Faster., inferred: true }
+      implements: [src/render/scheduler.ts#schedule]
+    why_bad: >-
+      Says nothing about what would slow down without it, or what the batch is keyed on.

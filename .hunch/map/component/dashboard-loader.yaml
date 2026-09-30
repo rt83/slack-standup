@@ -1,0 +1,23 @@
+id: dashboard-loader
+kind: component
+within: dashboard-client
+aliases:
+  - loadDashboard
+  - dashboardApi
+summary: "Fetches /api/dashboard with the page's own query string and returns one of three states: ready with checked data, or failed with a message a person can read. It validates both the data and the error body against the shared schemas."
+responsibility: "Turn one API request into a loading result the page can render: ready data or a readable failure."
+owns:
+  - "the failure messages: the server's error, a bad response, an unreachable server"
+does_not_own:
+  - "the data shape (dashboardData.ts, dashboard-api)"
+  - "rendering (dashboard-page)"
+why:
+  text: "A failed or mismatched response must show a reason, not a broken page. Parsing with the same schema the server builds from turns a version mismatch into \"data this page does not understand\". The fetcher is injectable, so the states are tested without a server."
+  evidence:
+    - src/web/client/dashboardApi.ts#loadDashboard
+    - "src/web/client/dashboardApi.test.ts#loadDashboard > refuses data that does not match the contract"
+code:
+  - src/web/client/dashboardApi.ts#loadDashboard
+  - src/web/client/dashboardApi.ts#DashboardLoad
+interface:
+  - src/web/client/dashboardApi.ts#loadDashboard

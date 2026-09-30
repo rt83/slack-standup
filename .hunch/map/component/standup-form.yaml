@@ -1,0 +1,40 @@
+id: standup-form
+kind: component
+within: standup-core
+aliases:
+  - modal
+  - block kit view
+summary: "The standup modal's wire format: it builds the Block Kit view from the form content, and reads a submitted or re-rendered view back into entries. Block ids, action ids and the private metadata are defined here and nowhere else. It also builds the Home tab and the not-linked modal."
+responsibility: "Translate between StandupFormContent and Slack's modal view, both ways, with one definition of every block and action id."
+owns:
+  - "block ids ({section}_issue_{id}_{field}, {section}_add_issue) and action ids"
+  - the private_metadata shape carrying hand-added issue ids
+  - which statuses an issue's dropdown offers
+  - restoring typed notes and picked statuses on re-render
+does_not_own:
+  - "which issues are on the form (standup-service)"
+  - "sending the view to Slack (standup-handlers)"
+why:
+  text: "Building the view and reading it back used to name blocks in separate places, and they drifted. With one module for both, a renamed id changes in both directions at once. Slack returns only input values on submit, not which issues were added by hand, so that list rides along in private_metadata and is parsed with a schema."
+  evidence:
+    - src/standup/standupForm.ts#metadataSchema
+    - f7feae5
+invariants:
+  - text: "Every block id in a view is unique; Slack rejects a view with duplicates."
+    evidence:
+      - "src/standup/standupForm.test.ts#standup form > gives every block a unique id"
+  - text: "The private_metadata shape ({did: {manualIds}, doing: {manualIds}}) stays as it is, so a modal left open across a deploy still submits."
+    evidence:
+      - src/standup/standupForm.ts#metadataSchema
+code:
+  - src/standup/standupForm.ts#buildStandupView
+  - src/standup/standupForm.ts#readStandupForm
+  - src/standup/standupForm.ts#issueBlocks
+  - src/standup/standupForm.ts#metadataSchema
+  - src/standup/standupForm.ts#buildHomeView
+  - src/standup/standupForm.ts#buildNotLinkedView
+  - src/standup/standupForm.ts#sectionOfAddIssueBlock
+interface:
+  - src/standup/standupForm.ts#buildStandupView
+  - src/standup/standupForm.ts#readStandupForm
+  - src/standup/standupForm.ts#sectionOfAddIssueBlock

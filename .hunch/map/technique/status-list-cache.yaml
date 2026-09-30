@@ -1,0 +1,15 @@
+id: status-list-cache
+kind: technique
+within: redmine-integration
+summary: "The global Redmine status list is fetched once and its promise kept for the life of the process. Concurrent callers share one request, and a failed fetch is forgotten so the next call retries."
+pattern: cache
+purpose:
+  text: "Every form open needs the fallback status list, and it is the same for every user because Redmine statuses are global. Caching the promise, not just the result, saves a round trip on every open and stops parallel opens from each firing a request."
+  evidence:
+    - src/lib/redmineClient.ts#RedmineClient.listStatuses
+    - "src/lib/redmineClient.test.ts#RedmineClient > fetches the global status list once, and again after a failure"
+implements:
+  - src/lib/redmineClient.ts#RedmineClient.listStatuses
+caveats:
+  - "A status added in Redmine is not seen until the app restarts."
+  - "The list is fetched with whichever person's key asks first."

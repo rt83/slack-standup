@@ -1,0 +1,31 @@
+id: standup-handlers
+kind: component
+within: slack-app
+aliases:
+  - /update
+  - registerStandupHandlers
+summary: "Registers everything the standup form needs with Bolt: /update and the Home tab button open the form, the add-issue box's options come from the tracker search, picking an issue re-renders the modal, and submitting records, writes and posts the report. Someone with no linked account gets the not-linked modal instead of the form."
+responsibility: "Connect Slack's form events to standup-service and standup-form, and send the resulting views and report back to Slack."
+owns:
+  - "the Slack event and action registrations for the form"
+  - "trimming search results to Slack's 75-character option text"
+  - "posting the report to the updates channel, when one is set"
+does_not_own:
+  - "any block id or form parsing (standup-form)"
+  - "what a submit writes (standup-service)"
+why:
+  text: "Every handler is a few lines: acknowledge, look up the linked user, call the core, send the view. That keeps Slack-specific shapes out of the rules. A failed issue search answers with no options instead of an error, so the select box stays usable. Re-rendering replaces the whole view, so the typed draft is read back first and carried into the new one."
+  evidence:
+    - src/slack/standupHandlers.ts#registerStandupHandlers
+    - f7feae5
+code:
+  - src/slack/standupHandlers.ts#registerStandupHandlers
+  - src/slack/standupHandlers.ts#OPTION_TEXT_LIMIT
+  - src/slack/standupHandlers.ts#StandupHandlerDeps
+interface:
+  - src/slack/standupHandlers.ts#registerStandupHandlers
+depends:
+  - standup-form
+  - standup-service
+  - redmine-rest-client
+  - user-store

@@ -1,0 +1,52 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: performance
+description: >
+  A performance requirement or budget: latency, throughput, memory, or
+  frame time, with the code it applies to and how it is measured.
+scope: [sub-system, service, component]
+freshness: normative
+verify: schema + resolution + semantic
+fields:
+  requirement: { type: text, required: true, depth: "one sentence", hint: "The budget, as someone would check it." }
+  metric:      { type: enum, enum: [latency, throughput, memory, cpu, frame-time, size], required: true }
+  target:      { type: number, required: true }
+  unit:        { type: text, required: true, hint: "ms, req/s, MB." }
+  percentile:  { type: text, hint: "p50, p95, p99." }
+  why:         { type: reasoning, required: true, depth: "two to four sentences naming what users notice when it is missed", hint: "Why the budget is this number." }
+  applies:     { anchor: [symbol, call-site], many: true, required: true }
+  measured_by: { anchor: [benchmark, metric, test], many: true, hint: "Without one, changes can't be re-checked." }
+examples:
+  good:
+    id: layout-pass-budget
+    kind: performance
+    within: render-service
+    summary: >-
+      A layout pass after a keystroke finishes within 8 ms at p95, so the frame it runs in still paints.
+      It is the number every change to measurement or splitting is judged against.
+    requirement: One incremental layout pass takes at most 8 ms at p95 on a 200-page document.
+    metric: frame-time
+    target: 8
+    unit: ms
+    percentile: p95
+    why:
+      text: >-
+        A frame is 16 ms and painting takes about half; a longer pass drops the frame and typing stutters,
+        which is the first thing users notice on long documents.
+      evidence: [docs/performance.md#frame-budget]
+    applies: [src/render/scheduler.ts#flush]
+    measured_by: ["bench/layout.bench.ts#incremental pass"]
+  bad:
+    item:
+      id: fast-layout
+      kind: performance
+      within: render-service
+      summary: Layout should be fast.
+      requirement: Be fast.
+      metric: frame-time
+      target: 8
+      unit: ms
+      why: { text: Speed is good., inferred: true }
+      applies: [src/render/scheduler.ts#flush]
+    why_bad: >-
+      A requirement nobody could measure, no benchmark to re-check it, and a why that names nothing users
+      would notice.
