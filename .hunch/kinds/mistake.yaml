@@ -1,0 +1,47 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: mistake
+description: >
+  Something learned while fixing a bug: what went wrong, why it was
+  easy to get wrong, and how to avoid repeating it.
+scope: [sub-system, service, component]
+freshness: historical
+verify: schema + resolution + semantic
+fields:
+  symptom:    { type: text, required: true, depth: "one sentence", hint: "What a user or developer saw." }
+  cause:      { type: reasoning, required: true, depth: "two to four sentences naming the real cause, and why it was easy to get wrong", hint: "Why it went wrong." }
+  lesson:     { type: text, required: true, depth: "one or two sentences", hint: "Phrase it as advice for the next change here." }
+  fix:        { anchor: [commit, diff-hunk], many: true, required: true }
+  regression: { anchor: test, many: true, hint: "The mistake retires if its test is deleted." }
+  area:       { ref: component, many: true, required: true }
+examples:
+  good:
+    id: header-repeat-lost-on-resize
+    kind: mistake
+    within: render-service
+    summary: >-
+      A table's repeated header disappeared from later pages after the window was resized. The resize
+      dropped cached heights but not the splitter's record of which rows start a page.
+    symptom: After a resize, the table header repeats only on the first page.
+    cause:
+      text: >-
+        Resizing invalidated block heights but not the row groups the splitter had cached, so the next
+        pass reused groups computed for the old width and never marked a group as starting a page. It was
+        easy to miss because the two caches live in different components.
+      evidence: [b7e19c4]
+    lesson: Anything that invalidates heights must also drop the splitter's row groups; test with a resize, not a fresh load.
+    fix: [b7e19c4]
+    regression: ["test/split.test.ts#splitTable > repeats headers after resize"]
+    area: [table-splitter, measurement-cache]
+  bad:
+    item:
+      id: header-bug
+      kind: mistake
+      within: render-service
+      summary: Headers were broken.
+      symptom: Header bug.
+      cause: { text: A bug., inferred: true }
+      lesson: Be careful with headers.
+      fix: [b7e19c4]
+      area: [table-splitter]
+    why_bad: >-
+      No real cause, so the next change repeats it, and a lesson nobody could act on.

@@ -1,0 +1,45 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: concept
+description: >
+  A domain idea or vocabulary term the code relies on, such as "a page
+  break is soft until layout settles". Anchored to where the idea is
+  implemented or enforced.
+scope: [business, sub-system, service, component]
+freshness: code-tracking
+verify: schema + resolution + grounding
+fields:
+  meaning:        { type: text, required: true, depth: "one to three sentences", hint: "What the term means here, in the project's own words." }
+  why_it_matters: { type: reasoning, required: true, depth: "two to four sentences naming what depends on it, or what goes wrong without it", hint: "What in the code relies on the idea." }
+  common_mistake: { type: reasoning, depth: "one or two sentences: the mistake, then what it breaks", hint: "What people get wrong about it." }
+  where:          { anchor: [symbol, type, field], many: true, required: true }
+examples:
+  good:
+    id: soft-page-break
+    kind: concept
+    within: layout-engine
+    summary: >-
+      A page break stays soft until the pass that placed it settles: the next pass may move it. Anything
+      that pins content to a page has to wait for the break to settle, or it pins against a break that
+      will move.
+    meaning: A break the split pass has proposed but not committed; it becomes hard when a pass ends with no overflow.
+    why_it_matters:
+      text: >-
+        Footnotes, headers and table header repeats read the break to decide what goes on a page. Read
+        while soft, they are placed against a page that is about to change.
+      evidence: [src/layout/split.ts#splitPass]
+    common_mistake:
+      text: Reading page numbers during a pass, which gives numbers that shift once the pass settles.
+      evidence: [9c41e07]
+    where: [src/layout/split.ts#splitPass]
+  bad:
+    item:
+      id: page-break
+      kind: concept
+      within: layout-engine
+      summary: A page break.
+      meaning: Where a page breaks.
+      why_it_matters: { text: Page breaks are important., inferred: true }
+      where: [src/layout/split.ts#splitPass]
+    why_bad: >-
+      Restates the name, and says nothing about what depends on the idea or what people get wrong about
+      it; "important" gives the reader nothing to act on.

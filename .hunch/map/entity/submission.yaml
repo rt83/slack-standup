@@ -1,0 +1,37 @@
+id: submission
+kind: entity
+within: standup-records
+aliases:
+  - daily update record
+  - submission_items
+summary: "One submitted daily update: who sent it and when (UTC), the raw form state for audit, the report text, and one item per issue row. Each item records whether its write to Redmine succeeded, and the error if not. It is the record the reminder, the dashboard and any follow-up on failed writes rely on."
+type: src/lib/submissionStore.ts#StoredSubmission
+why:
+  text: "Redmine holds the comments, but only this record says who reported on which day, which issues were added by hand, and which writes failed. The dashboard's counts, the missing list and the reminder are all built from it, never from Redmine."
+  evidence:
+    - src/lib/submissionStore.ts#SubmissionStore
+    - src/web/dashboard.ts#DashboardService.build
+storage:
+  - src/lib/db.ts
+key_fields:
+  - src/lib/submissionStore.ts#StoredSubmission.submittedAt
+  - src/lib/submissionStore.ts#StoredItem.origin
+  - src/lib/submissionStore.ts#StoredItem.syncedToRedmine
+invariants:
+  - rule: "A submission and all its items are written together or not at all."
+    enforced:
+      - src/lib/submissionStore.ts#SubmissionStore.record
+    why:
+      text: "A submission without its items would count as \"submitted today\" while showing nothing in the log."
+      inferred: true
+  - rule: "submitted_at is UTC in 'YYYY-MM-DD HH:MM:SS' form, so it sorts as text and matches SQLite's CURRENT_TIMESTAMP."
+    enforced:
+      - src/lib/submissionStore.ts#toStoredTimestamp
+    why:
+      text: "The recent log orders by submitted_at as text, and the day queries compare it with a lower bound as text."
+      evidence:
+        - src/lib/submissionStore.ts#SubmissionStore.recent
+  - rule: "An item's section is 'did' or 'doing'."
+    enforced:
+      - src/lib/db.ts#SCHEMA
+lifecycle: "Created by StandupService.submit before any Redmine write. Each item's sync fields are then set once by recordSync. Never edited or deleted by the app."

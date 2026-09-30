@@ -1,0 +1,6 @@
+hunch.db
+hunch.db-*
+spool/
+artifacts/
+worker/
+*.sock

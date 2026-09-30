@@ -1,0 +1,26 @@
+id: app-runtime
+kind: sub-system
+within: daily-standup
+aliases:
+  - composition root
+  - config
+summary: "Starts the app: reads and checks the settings file, builds every part once, wires them together and schedules the reminder. It is the only place the product's parts meet, so it decides what each part is given."
+purpose: "Turn conf/app.yaml into one checked configuration, build the stores, the tracker client and the services from it, and start one server for Slack and the dashboard."
+owns:
+  - reading and validating conf/app.yaml
+  - building concrete collaborators and handing them to the others
+  - scheduling the reminder in the team's time zone
+  - the dashboard client's build and dev proxy settings
+does_not_own:
+  - "any standup rule (update-collection)"
+  - "any stored data (standup-records)"
+why:
+  text: "Only app.ts builds concrete classes; every other module receives what it needs through a narrow interface. That keeps the policy code testable with stand-ins, and gives one place to read how the app fits together. Configuration is read and checked once, with unknown keys refused, so a typo stops the app at start instead of being silently ignored."
+  evidence:
+    - src/app.ts
+    - src/config.ts#parseConfig
+    - 083c4bd
+roots:
+  - src/app.ts
+  - src/config.ts
+  - vite.config.ts

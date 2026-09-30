@@ -1,0 +1,21 @@
+id: form-draft
+kind: concept
+within: standup-core
+aliases:
+  - draft
+  - re-render state
+summary: "The draft is what a person has typed and picked in the open modal. Before the modal is rebuilt, the draft is read back and restored into the new view as initial values. It is how adding an issue mid-way keeps everything already written."
+meaning: "The StandupEntry list read from the current modal state, passed into the next StandupFormContent as draft and used for initial_value and initial_option."
+why_it_matters:
+  text: "Slack's views.update replaces the whole view, so without the draft, adding an issue would wipe every note and status. Restoring the picked status was once missing, and statuses were lost on re-render."
+  evidence:
+    - src/standup/standupForm.ts#StandupFormContent.draft
+    - "src/standup/standupForm.test.ts#standup form > restores a draft on re-render: notes and the picked status"
+    - f7feae5
+common_mistake:
+  text: "Restoring notes but not the dropdown. The status then silently resets to \"leave as is\"."
+  evidence:
+    - f7feae5
+where:
+  - src/standup/standupForm.ts#StandupFormContent.draft
+  - src/standup/standupForm.ts#StandupFormState

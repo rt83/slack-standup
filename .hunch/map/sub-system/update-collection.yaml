@@ -1,0 +1,35 @@
+id: update-collection
+kind: sub-system
+within: daily-standup
+aliases:
+  - slack bot
+  - standup form
+summary: "The Slack side of the standup. It opens the daily-update form filled from the person's issue tracker, searches for and adds issues, takes the submission, writes each note to its issue, posts the report to the channel, and sends the daily reminder. Every change a person makes to the tracker goes through here."
+purpose: "Turn a person's Slack interaction into a finished daily update: a recorded submission, a comment (and optional status change) on each issue, and a channel report."
+owns:
+  - the standup modal, from opening to submit
+  - searching and adding issues to the form
+  - writing notes and status changes to the issue tracker
+  - the channel report and the reminder DM
+  - the /update, /dashboard and /link-redmine commands
+does_not_own:
+  - storing submissions and account links (standup-records)
+  - the web dashboard's data and page (team-dashboard); /dashboard here only replies with a link to it
+  - reading configuration and wiring the parts (app-runtime)
+why:
+  text: "Slack, the standup rules and the issue tracker are kept as three layers: Slack glue in src/slack, the rules in src/standup, and the tracker behind the IssueTracker interface. The rules then receive their collaborators instead of building them, so they are tested without Slack or a live Redmine. The refactor that introduced this split also gave the modal a single definition of its block ids, which the old code had in several places."
+  evidence:
+    - f7feae5
+    - src/lib/redmineClient.ts#IssueTracker
+invariants:
+  - text: "Every read and write to the tracker uses the person's own API key, so they see only issues they can see and each comment is attributed to them."
+    evidence:
+      - src/lib/redmineClient.ts#IssueTracker
+      - src/standup/standupService.ts#StandupService.submit
+  - text: "An update never reassigns an issue; it writes only notes and, when picked, a status."
+    evidence:
+      - src/lib/redmineClient.ts#RedmineClient.updateIssue
+roots:
+  - src/slack
+  - src/standup
+  - src/lib/redmineClient.ts

@@ -1,0 +1,16 @@
+id: allowed-statuses-never-requested
+kind: mistake
+within: redmine-integration
+summary: "The status dropdown always offered every status, never just the workflow-legal ones. The issue request asked Redmine to include attachments instead of allowed_statuses, so the list never came back."
+symptom: "Every issue's status dropdown listed all Redmine statuses, including ones the person could not move the issue to."
+cause:
+  text: "Redmine returns allowed_statuses only when asked with include=allowed_statuses. The old request asked for include=attachments, and a missing list quietly fell back to the global list, so nothing looked broken."
+  evidence:
+    - f7feae5
+lesson: "When the form falls back quietly, test that the preferred data is requested: assert the include parameter, and keep 'unknown' (null) distinct from 'none'."
+fix:
+  - f7feae5
+regression:
+  - "src/lib/redmineClient.test.ts#RedmineClient > asks for an issue's workflow-legal statuses and maps them"
+area:
+  - redmine-rest-client

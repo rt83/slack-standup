@@ -1,0 +1,19 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+# Broadest first. Each level names the kind whose items are the units at that level.
+scopes:
+  - name: business
+    kind: business
+    description: A business capability the product offers, such as billing or document export.
+    guidance: "Reason as the business user: goals, rules, outcomes. No technical terms."
+  - name: sub-system
+    kind: sub-system
+    description: A group of services that together deliver part of a capability.
+    guidance: Areas that fulfil business requirements and how they hand off to each other.
+  - name: service
+    kind: service
+    description: A deployable unit or package with its own entry points.
+    guidance: Layers (MVC), how services connect, each service's position relative to others.
+  - name: component
+    kind: component
+    description: A module or class with one clear responsibility inside a service.
+    guidance: How things are done and organized inside one service.

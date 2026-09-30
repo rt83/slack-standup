@@ -1,0 +1,28 @@
+id: link-redmine-command
+kind: component
+within: slack-app
+aliases:
+  - /link-redmine
+summary: "Links a Slack user to a Redmine account: /link-redmine @user <redmine_user_id> <api_key> stores the id, the key and the person's Slack real name. It is how anyone becomes able to use the form. It has no admin check."
+responsibility: "Parse /link-redmine's arguments and upsert the account link in the user store."
+owns:
+  - "the /link-redmine argument grammar: an escaped mention, a numeric id and a key, nothing more"
+does_not_own:
+  - "storing the link (user-store)"
+  - "checking that the key works: nothing does"
+why:
+  text: "People are linked by an admin command rather than by DMing their key to the bot. An older message told people to DM their key, but nothing handled it. The Redmine user id must be numeric, which the old code did not check."
+  evidence:
+    - f7feae5
+    - "src/slack/commandArgs.test.ts#parseLinkRedmineArgs > refuses anything missing or malformed"
+invariants:
+  - text: "Nothing checks who runs the command, so anyone who can run it can make Redmine writes appear under another person's account."
+    evidence:
+      - src/slack/linkRedmineCommand.ts#registerLinkRedmineCommand
+code:
+  - src/slack/linkRedmineCommand.ts#parseLinkRedmineArgs
+  - src/slack/linkRedmineCommand.ts#registerLinkRedmineCommand
+interface:
+  - src/slack/linkRedmineCommand.ts#registerLinkRedmineCommand
+depends:
+  - user-store

@@ -1,0 +1,14 @@
+id: option-text-limit
+kind: constraint
+within: slack-app
+summary: "Slack caps an option's text at 75 characters, so issue search results are cut to that length. A long issue subject would otherwise make Slack reject the whole options response."
+rule: "Trim every select option's text to 75 characters before sending it to Slack."
+category: external-api
+limit: "75 characters"
+why:
+  text: "One over-long option makes Slack refuse the options response, and the search box shows nothing. Issue subjects in Redmine are often longer than 75 characters."
+  evidence:
+    - src/slack/standupHandlers.ts#OPTION_TEXT_LIMIT
+applies:
+  - src/slack/standupHandlers.ts#OPTION_TEXT_LIMIT
+  - src/slack/standupHandlers.ts#registerStandupHandlers > slice#1

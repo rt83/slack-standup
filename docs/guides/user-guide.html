@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User guide — Standup Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/guide.css">
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/highlight.min.js" defer></script>
+<script src="assets/guide.js" defer></script>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <a class="home" href="index.html">← Guides</a>
+    <ol>
+      <li><a href="#start">Before you start</a></li>
+      <li><a href="#submit">Submit your daily update</a></li>
+      <li class="sub"><a href="#open">Open the form</a></li>
+      <li class="sub"><a href="#fill">Fill it in</a></li>
+      <li class="sub"><a href="#add">Add an issue</a></li>
+      <li class="sub"><a href="#send">Submit</a></li>
+      <li><a href="#after">What happens after you submit</a></li>
+      <li><a href="#reminders">Reminders</a></li>
+      <li><a href="#dashboard">The dashboard</a></li>
+      <li><a href="#admins">For admins: linking people</a></li>
+      <li><a href="#limits">Limits to know about</a></li>
+      <li><a href="#faq">Questions</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="page">
+      <div class="kicker">User guide</div>
+      <h1>Your daily update, from Slack</h1>
+      <p>You tell the team what you did and what you are doing. The bot fills the form with your Redmine issues, then writes what you type back to each issue as a comment.</p>
+    </header>
+
+    <h2 id="start">Before you start</h2>
+    <p>An admin must link your Slack account to your Redmine account once. They need two things from you:</p>
+    <ul>
+      <li><strong>Your Redmine API key.</strong> In Redmine, open <em>My account</em>. Under <em>API access key</em>, choose <em>Show</em>.</li>
+      <li><strong>Your Redmine user ID.</strong> It is the number at the end of your Redmine profile's address, for example <code>/users/42</code>.</li>
+    </ul>
+    <p>The bot uses your key for everything it does for you. Redmine therefore shows each comment as written by you. You only see and change what your Redmine account can.</p>
+    <div class="note">
+      <p>If you are not linked yet, the form shows "Your Slack account isn't linked to Redmine yet" instead. Ask an admin to link you; see <a href="#admins">For admins</a>.</p>
+    </div>
+
+    <h2 id="submit">Submit your daily update</h2>
+
+    <figure class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  actor You
+  participant Slack
+  participant Bot as Standup Bot
+  participant Redmine
+  participant Channel as Updates channel
+
+  You->>Slack: /update
+  Slack->>Bot: command
+  Bot->>Redmine: your open issues (your key)
+  Redmine-->>Bot: issues and allowed statuses
+  Bot->>Slack: open the form
+  You->>Slack: type notes, pick statuses, add issues
+  You->>Slack: Submit
+  Slack->>Bot: the form
+  loop each issue row
+    Bot->>Redmine: comment, and status change if picked
+  end
+  Bot->>Channel: the report
+      </pre>
+      <figcaption>One daily update, from command to channel.</figcaption>
+    </figure>
+
+    <h3 id="open">Open the form</h3>
+    <p>Use either of these:</p>
+    <ul>
+      <li>Type <code>/update</code> in any channel or DM.</li>
+      <li>Open the Standup Bot in Slack's sidebar. On its <em>Home</em> tab, click <strong>Submit Daily Update</strong>.</li>
+    </ul>
+    <p>The form takes a moment to open while the bot fetches your issues from Redmine.</p>
+
+    <h3 id="fill">Fill it in</h3>
+    <p>The form has two sections, <strong>What I did</strong> and <strong>What I am doing</strong>. Each one starts with every open issue assigned to you in Redmine, most recently updated first. Each issue row has:</p>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Part of the row</th><th>What it is</th></tr>
+      <tr><td>📋 <strong>#101 Fix login redirect</strong> <em>(Project)</em></td><td>The issue. 📋 means it is assigned to you. 🆕 means you added it by hand.</td></tr>
+      <tr><td>Notes</td><td>Required. In <em>What I did</em>: details, blockers, what is left. In <em>What I am doing</em>: the problem, how you are tackling it, the plan.</td></tr>
+      <tr><td>Change status</td><td>Optional. Leave it empty to keep the issue's status. The list shows only the statuses Redmine's workflow lets you move this issue to. The issue's current status is shown as the placeholder.</td></tr>
+    </table>
+    </div>
+    <div class="note">
+      <p>Every row needs notes before Slack lets you submit. That includes each issue in <em>both</em> sections.</p>
+    </div>
+
+    <h3 id="add">Add an issue</h3>
+    <p>For work on an issue that is not assigned to you, use the <strong>+ Add issue by number or title</strong> box at the end of either section.</p>
+    <ol class="steps">
+      <li>Type an issue number, such as <code>230</code>, or words from its title.</li>
+      <li>Pick the issue from the list. You can only find issues your Redmine account can see.</li>
+      <li>It appears in that section under <strong>Manually added</strong>, marked 🆕.</li>
+    </ol>
+    <p>What you have already typed stays: notes and picked statuses are kept when the form redraws. Adding an issue that is already in the section does nothing. Adding an issue never reassigns it to you in Redmine.</p>
+
+    <h3 id="send">Submit</h3>
+    <p>Click <strong>Submit</strong>. The form closes straight away. The bot writes to Redmine in the background.</p>
+
+    <h2 id="after">What happens after you submit</h2>
+
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart TD
+  row["One issue row"] --> comment["Your notes become a comment<br/>on the Redmine issue"]
+  comment --> picked{"Did you pick<br/>a status?"}
+  picked -- "yes" --> status["The issue moves to that status"]
+  picked -- "no" --> keep["The status stays as it was"]
+  status --> saved["Saved in the history,<br/>marked synced or failed"]
+  keep --> saved
+      </pre>
+      <figcaption>What each issue row turns into.</figcaption>
+    </figure>
+
+    <h3>In Redmine</h3>
+    <p>Every issue row becomes one comment on its issue, written as you. The comment says which section it came from:</p>
+    <pre><code class="language-plaintext">[Daily Update - What I did]
+Fixed the login redirect. Remaining: the regression test.</code></pre>
+    <p>If you picked a status, the same change moves the issue to it. Nothing else about the issue changes. In particular, it is never reassigned.</p>
+
+    <h3>In the updates channel</h3>
+    <p>If your team has an updates channel, the bot posts your report there:</p>
+    <pre><code class="language-plaintext">Daily Update from @Jane
+
+What I did:
+  📋 #101: Fixed the login redirect. Remaining: the regression test. (status → 3)
+  🆕 #230: Reviewed the export PR
+
+What I am doing:
+  📋 #101: Writing the regression test</code></pre>
+    <p>The status appears as Redmine's status number, not its name.</p>
+
+    <h3>If Redmine refuses a write</h3>
+    <p>Each issue is written on its own. If Redmine refuses one, the others are still written. The refused one shows <strong>redmine sync failed</strong> on the dashboard. The usual reasons: your API key changed, you lack permission to comment on that project, or the workflow does not allow that status change. Ask an admin to check the logs for the exact reason.</p>
+
+    <h2 id="reminders">Reminders</h2>
+    <p>If your team turned reminders on, the bot DMs you at a set time on the days it is set for. It only DMs people who have not submitted yet that day. "That day" is in the team's time zone, not yours.</p>
+
+    <h2 id="dashboard">The dashboard</h2>
+    <p>The dashboard is a web page with the team's submission history.</p>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Type in Slack</th><th>You get</th></tr>
+      <tr><td><code>/dashboard</code></td><td>A button to the team view.</td></tr>
+      <tr><td><code>/dashboard --p @jane</code></td><td>A button to Jane's own view. Pick Jane from Slack's @-mention list; typing the name as plain text does not work.</td></tr>
+    </table>
+    </div>
+    <p>Only you see the bot's reply. Click the button to open the dashboard in your browser.</p>
+
+    <h3>What it shows</h3>
+    <ul>
+      <li><strong>Submitted today</strong> and <strong>missing today</strong>. Counted by the team's time zone.</li>
+      <li><strong>Manually added</strong>. The share of all recorded issue rows that people added by hand.</li>
+      <li><strong>Submissions per day</strong>, over the last 14 days.</li>
+      <li>In the team view: <strong>who has not submitted today</strong>.</li>
+      <li>In a person's view: <strong>issue composition</strong>, their assigned and hand-added rows.</li>
+      <li><strong>The log</strong>: the latest 50 submissions, newest first. Click a row to see its issues and notes.</li>
+    </ul>
+    <p>In the log, each issue carries tags:</p>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Tag</th><th>Meaning</th></tr>
+      <tr><td><code>assigned</code></td><td>It was on the form because it is assigned to that person.</td></tr>
+      <tr><td><code>added</code></td><td>The person added it by hand. These rows also have an amber edge.</td></tr>
+      <tr><td><code>→ status 3</code></td><td>The person moved the issue to that status.</td></tr>
+      <tr><td><code>redmine sync failed</code></td><td>Redmine refused this write. See <a href="#after">If Redmine refuses a write</a>.</td></tr>
+    </table>
+    </div>
+    <p>Times are shown in the team's time zone.</p>
+
+    <h2 id="admins">For admins: linking people</h2>
+    <p>Link each person once, with their Slack mention, their Redmine user ID and their Redmine API key:</p>
+    <pre><code class="language-plaintext">/link-redmine @jane 42 0123456789abcdef0123456789abcdef01234567</code></pre>
+    <ul>
+      <li>Pick the person from Slack's @-mention list. A name typed as plain text is refused.</li>
+      <li>The Redmine user ID must be a number.</li>
+      <li>Running it again for the same person replaces their link. Do this when someone resets their Redmine API key.</li>
+      <li>There is no command to unlink someone yet.</li>
+    </ul>
+    <div class="warn">
+      <p><strong>Anyone in the workspace can run this command.</strong> Whoever runs it can make Redmine attribute comments to someone else. Treat the command as admin-only by agreement until an admin check is added.</p>
+    </div>
+
+    <h2 id="limits">Limits to know about</h2>
+    <ul>
+      <li><strong>Two comments per issue per day.</strong> Every open issue appears in both sections, and each row needs notes. So each of your open issues gets a "What I did" comment and a "What I am doing" comment every day.</li>
+      <li><strong>Many open issues stop the form from opening.</strong> Slack limits how much a form can hold. The form uses 8 blocks per issue plus 4, and Slack allows 100. With 13 or more open issues assigned to you, the form cannot open. Closing or reassigning finished issues in Redmine brings the list down.</li>
+      <li><strong>Statuses appear as numbers</strong> in the channel report and on the dashboard.</li>
+      <li><strong>The dashboard shows the latest 50 submissions.</strong> There is no paging yet.</li>
+    </ul>
+
+    <h2 id="faq">Questions</h2>
+    <h3>Can I submit more than once a day?</h3>
+    <p>Yes. Each submission is written to Redmine and posted separately. You count as submitted after the first one.</p>
+    <h3>Can I edit an update after submitting?</h3>
+    <p>Not in the bot. The comments are ordinary Redmine comments, so you can edit them in Redmine if your role allows it.</p>
+    <h3>Why is an issue I work on not in the form?</h3>
+    <p>The form lists open issues assigned to you. Add any other issue with the <a href="#add">Add issue</a> box.</p>
+    <h3>Why can I not pick the status I want?</h3>
+    <p>The list follows your Redmine workflow. It shows only the moves your role may make on that issue's tracker. Change the issue in Redmine if you need a move the workflow does not allow, or ask a Redmine admin.</p>
+    <h3>Who can see the dashboard?</h3>
+    <p>Anyone your team's setup lets reach its address. The bot itself has no login. Your admins may have put it behind one.</p>
+  </main>
+</div>
+</body>
+</html>

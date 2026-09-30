@@ -1,0 +1,37 @@
+# Standup bot configuration.
+#
+# Copy this folder to conf/ and fill in the values. The app reads conf/app.yaml from the
+# folder it is started in. Unknown keys are refused, so a typo stops the app at start
+# instead of being ignored.
+
+slack:
+  # api.slack.com/apps → your app → OAuth & Permissions → Bot User OAuth Token
+  botToken: xoxb-...
+  # api.slack.com/apps → your app → Basic Information → Signing Secret
+  signingSecret: ...
+  # Channel ID the finished reports are posted to. Leave empty to not post them.
+  # The bot must be a member of the channel.
+  updatesChannel: C0123456789
+
+redmine:
+  # Base URL of your Redmine. Its REST API must be enabled.
+  # Each person's own API key is stored in the database by /link-redmine, not here.
+  baseUrl: https://redmine.example.com
+
+server:
+  port: 3000
+  # The public HTTPS address of this app. Slack's dashboard links are built from it.
+  # Leave empty for http://localhost:<port>, which only works on the server itself.
+  publicUrl: https://standup.example.com
+
+database:
+  # SQLite database file, relative to the working directory. Created on first start.
+  path: ./data/app.db
+
+reminder:
+  # When to DM people who have not submitted, as a cron expression in timeZone.
+  # Leave empty for no reminder. This one is 10:00 on weekdays.
+  cron: "0 10 * * 1-5"
+
+# The team's time zone (IANA name). It decides what "today" means everywhere.
+timeZone: Asia/Ho_Chi_Minh

@@ -1,0 +1,24 @@
+id: team-today
+kind: concept
+within: daily-standup
+aliases:
+  - today
+  - timeZone
+  - local day
+summary: "\"Today\" always means the current day in the team's configured time zone, not UTC and not the server's zone. The reminder, the dashboard's \"submitted today\" and missing list, and the per-day chart all use it, so they agree on who has reported."
+meaning: "The calendar day, YYYY-MM-DD, of an instant in config.timeZone. Timestamps are stored in UTC and turned into days only through the Calendar."
+why_it_matters:
+  text: "Who gets a reminder, who shows as missing, and which bar of the trend a submission counts in all depend on it. When these mixed SQLite's UTC date with server-local time, a morning submission in Ho Chi Minh City could count for the day before."
+  evidence:
+    - src/lib/calendar.ts#Calendar
+    - "src/lib/submissionStore.test.ts#SubmissionStore > counts today by the team's calendar, not UTC"
+    - f7feae5
+common_mistake:
+  text: "Using SQLite's date('now') or new Date().toDateString() to find today. Both give UTC or server-local days and split the team's day at the wrong hour."
+  evidence:
+    - src/lib/submissionStore.ts#SubmissionStore
+where:
+  - src/lib/calendar.ts#Calendar.today
+  - src/lib/calendar.ts#Calendar.dayOf
+  - src/lib/submissionStore.ts#SubmissionStore
+  - src/config.ts#timeZone

@@ -1,0 +1,30 @@
+id: redmine-integration
+kind: service
+within: update-collection
+aliases:
+  - redmine client
+  - issue tracker
+summary: "The app's only way to Redmine: list a person's open issues, search issues, fetch one issue with its workflow-legal statuses, list all statuses, and write a note and status. Responses are checked against a schema before use. Every call carries the person's own API key."
+purpose: "Give standup-core and the issue search the tracker operations they need, behind the IssueTracker interface, over Redmine's REST API."
+owns:
+  - the Redmine REST calls and their parameters
+  - checking Redmine's responses against a schema
+  - caching the global status list
+does_not_own:
+  - "which issues go on the form, and what a submit writes (standup-core)"
+  - "storing API keys (record-store)"
+why:
+  text: "An interface in front of Redmine lets the standup rules be tested without a live tracker. Its methods take the API key on every call rather than holding one, so one client serves every user and each write is attributed to the person who made it. Parsing responses with zod means a Redmine that answers in an unexpected shape fails loudly instead of feeding wrong data to the form."
+  evidence:
+    - src/lib/redmineClient.ts#IssueTracker
+    - src/lib/redmineClient.ts#RedmineClient
+invariants:
+  - text: "Issue fetches ask for include=allowed_statuses; without it Redmine leaves the list out and the form falls back to every status."
+    evidence:
+      - src/lib/redmineClient.ts#RedmineClient.getIssue
+      - f7feae5
+roots:
+  - src/lib/redmineClient.ts
+entry:
+  - src/lib/redmineClient.ts#IssueTracker
+  - src/lib/redmineClient.ts#RedmineClient

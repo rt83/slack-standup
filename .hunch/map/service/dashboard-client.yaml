@@ -1,0 +1,27 @@
+id: dashboard-client
+kind: service
+within: team-dashboard
+aliases:
+  - vue app
+  - dashboard page
+summary: "The browser page, a Vue 3 app styled with Tailwind and built by Vite into dist/dashboard. It fetches the API with its own query string, checks the response against the shared schema, and shows the stats, the trend chart, the missing list or the person's issue mix, and the submission log."
+purpose: "Render the dashboard data the API sends, or say plainly why it could not be loaded."
+owns:
+  - "the page layout and its components"
+  - "the two charts (trend, issue origin)"
+  - "loading, failed and ready states"
+does_not_own:
+  - "the data contract, which it imports from dashboard-api's dashboardData.ts"
+  - "scope and trend window rules: it passes its query string through unchanged"
+why:
+  text: "A separate built client keeps the server free of a build step while the page gets a real component framework. Passing window.location.search straight to the API means the page and API read one query string the same way, with no parsing on the client. The response is validated against the shared schema, so a server/client version mismatch shows a message instead of a broken page."
+  evidence:
+    - src/web/client/dashboardApi.ts#loadDashboard
+    - vite.config.ts
+    - README.md#quick-start
+roots:
+  - src/web/client
+entry:
+  - src/web/client/dashboardApi.ts#loadDashboard
+depends:
+  - dashboard-api

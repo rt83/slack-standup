@@ -1,0 +1,32 @@
+id: linked-user
+kind: entity
+within: standup-records
+aliases:
+  - account link
+  - users table
+summary: "The link from a Slack user to their Redmine account: Slack id, Redmine user id, Redmine API key and display name. Without one, a person sees the not-linked modal instead of the form, gets no reminder, and does not appear on the dashboard."
+type: src/lib/userStore.ts#LinkedUser
+why:
+  text: "It is the list of who is on the team, as far as the app knows, and the key that lets the app act as each person in Redmine. The reminder and the dashboard's missing list are built from this list."
+  evidence:
+    - src/standup/reminderJob.ts#ReminderJob.run
+    - src/web/dashboard.ts#DashboardService.build
+    - src/slack/standupHandlers.ts#registerStandupHandlers
+storage:
+  - src/lib/db.ts
+key_fields:
+  - src/lib/userStore.ts#LinkedUser.slackUserId
+  - src/lib/userStore.ts#LinkedUser.redmineApiKey
+invariants:
+  - rule: "One link per Slack user; linking again replaces the Redmine id, key and name."
+    enforced:
+      - src/lib/userStore.ts#UserStore.link
+  - rule: "The API key never leaves the server in dashboard data."
+    enforced:
+      - src/web/dashboard.ts#toPerson
+      - "src/web/dashboard.test.ts#DashboardService > sends data the client schema accepts, and never an API key"
+    why:
+      text: "The dashboard has no authentication; a key in its data would hand Redmine access to anyone with the link."
+      evidence:
+        - README.md#dashboard
+lifecycle: "Created or replaced by /link-redmine. Read by the form, the search, the reminder, the dashboard and /dashboard. Nothing in the app deletes one."

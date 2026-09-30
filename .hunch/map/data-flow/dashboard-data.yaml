@@ -1,0 +1,30 @@
+id: dashboard-data
+kind: data-flow
+within: team-dashboard
+aliases:
+  - DashboardData
+  - /api/dashboard response
+summary: "The dashboard's JSON: focus (team missing list or one person), time zone, today's counts, per-day counts, origin counts and recent submissions. The server builds it as a DashboardData type, and the browser parses it with the same zod schema. One definition serves both ends, so they cannot drift."
+payload: src/web/dashboardData.ts#DashboardData
+producer: dashboard-assembler
+consumer:
+  - dashboard-loader
+contract: src/web/dashboardData.ts#dashboardDataSchema
+handoff:
+  - src/web/server.ts#registerDashboardRoutes > json#2
+  - src/web/client/dashboardApi.ts#loadDashboard > fetcher#1
+transport: http
+rationale:
+  text: "The schema lives in a module that both the server and the Vite bundle import. The server's type is inferred from it, and the client validates against it, so a change to one end fails to compile or shows a message rather than breaking silently. Timestamps travel as ISO UTC with the time zone alongside, so the client shows times in the team's zone rather than the browser's."
+  evidence:
+    - src/web/dashboardData.ts#dashboardDataSchema
+    - f7feae5
+transforms:
+  - at: src/web/dashboard.ts#toPerson
+    note: "A linked user is cut down to slackUserId and displayName; the API key never leaves the server."
+    why:
+      text: "The dashboard has no authentication, so nothing secret may be in its data."
+      evidence:
+        - "src/web/dashboard.test.ts#DashboardService > sends data the client schema accepts, and never an API key"
+  - at: src/web/dashboard.ts#DashboardService.build
+    note: "Stored submission dates become ISO strings, and each submission gets its person's display name."

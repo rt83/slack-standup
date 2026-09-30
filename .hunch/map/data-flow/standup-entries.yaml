@@ -1,0 +1,25 @@
+id: standup-entries
+kind: data-flow
+within: update-collection
+aliases:
+  - StandupEntry
+  - form entries
+summary: "One entry per issue row as the person filled it in: section, issue id, origin, notes and the picked status. Entries are read from the submitted modal and passed to the standup service. They become rows in submission_items, lines in the channel report, and a comment on each issue."
+payload: src/standup/types.ts#StandupEntry
+producer: standup-form
+consumer:
+  - standup-service
+contract: src/standup/standupForm.ts#readStandupForm
+handoff:
+  - src/slack/standupHandlers.ts#registerStandupHandlers > submit#1
+transport: in-process
+rationale:
+  text: "Entries are the one shape the modal, the store, the report and the tracker write all agree on, so Slack's block-keyed state is turned into entries once, at the edge. A null newStatusId means \"leave the status alone\", which is how a PUT with notes only is chosen later."
+  evidence:
+    - src/standup/types.ts#StandupEntry
+    - src/lib/redmineClient.ts#RedmineClient.updateIssue
+transforms:
+  - at: src/standup/standupService.ts#StandupService.submit > record#1
+    note: "Stored as submission_items rows; origin becomes is_manual."
+  - at: src/standup/standupService.ts#StandupService.submit > formatIssueNote#1
+    note: "Each entry's notes become a Redmine comment prefixed with its section title."

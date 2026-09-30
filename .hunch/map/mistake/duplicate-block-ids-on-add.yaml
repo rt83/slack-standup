@@ -1,0 +1,19 @@
+id: duplicate-block-ids-on-add
+kind: mistake
+within: standup-core
+summary: "Adding an issue that was already on the form, because it was assigned or already added, produced two rows with the same block ids, and Slack rejected the re-rendered modal."
+symptom: "Picking an already-listed issue in the add-issue box made the modal update fail."
+cause:
+  text: "Block ids are built from section and issue id, so the same issue twice in one section gives duplicate ids, which Slack refuses. The add path did not check the assigned list or the ids already added."
+  evidence:
+    - f7feae5
+    - src/standup/standupService.ts#StandupService.addIssue
+lesson: "Any path that adds rows to the modal must drop issues already in that section. The unique-block-id test must cover assigned and added issues together."
+fix:
+  - f7feae5
+regression:
+  - "src/standup/standupService.test.ts#StandupService > does not add an issue that is already on the list"
+  - "src/standup/standupForm.test.ts#standup form > gives every block a unique id"
+area:
+  - standup-service
+  - standup-form

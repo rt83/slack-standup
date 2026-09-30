@@ -1,0 +1,18 @@
+id: modal-block-limit
+kind: constraint
+within: standup-core
+aliases:
+  - 100 blocks
+  - too many issues
+summary: "Slack allows 100 blocks in a modal. The form uses 4 blocks per issue in each section plus 4 fixed blocks, so a person with 13 or more open issues cannot open it. Anything that adds blocks per issue lowers that number."
+rule: "Keep the standup modal at or under 100 blocks; count 4 blocks per issue per section plus the section headers and add-issue boxes before adding any block."
+category: limit
+limit: "100 blocks per modal; about 12 issues today"
+why:
+  text: "Slack rejects a view over the limit, so views.open fails and the person gets no form at all. Each issue is listed in both sections, so every extra block per issue costs two. Hand-added issues and the \"Manually added\" divider also count."
+  evidence:
+    - README.md#known-gaps
+    - src/standup/standupForm.ts#issueBlocks
+applies:
+  - src/standup/standupForm.ts#buildStandupView
+  - src/standup/standupForm.ts#issueBlocks

@@ -1,0 +1,31 @@
+id: team-dashboard
+kind: sub-system
+within: daily-standup
+aliases:
+  - dashboard
+  - daily log
+summary: "The web view of the standup: the submission trend, who has not reported today, and a log of every submission. It can also show one person's issue mix. A lead reaches it through the link /dashboard posts in Slack."
+purpose: "Show the team, or one person, how the standup is going: counts per day, who is missing, and each submission's items with whether they reached the tracker."
+owns:
+  - the dashboard API and its JSON contract
+  - the dashboard page's URL shape, including the per-person link
+  - the Vue page and its charts
+does_not_own:
+  - "the /dashboard Slack command, which only replies with a link (update-collection)"
+  - "the stored submissions and the day calculation (standup-records)"
+  - "access control: there is none"
+why:
+  text: "Slack messages are fine for one report but poor for a trend or a missing list. A browser page shows both at a glance. It runs on the same Express router as Slack's requests, so the app needs one port and one public address. The server and client share one zod schema for the data, so the contract cannot drift."
+  evidence:
+    - src/web/server.ts#registerDashboardRoutes
+    - src/web/dashboardData.ts#dashboardDataSchema
+    - README.md#dashboard
+invariants:
+  - text: "The dashboard never sends a person's API key; people are reduced to an id and a display name before leaving the server."
+    evidence:
+      - src/web/dashboard.ts#toPerson
+  - text: "The contract module stays free of Node-only imports, because the browser bundle includes it."
+    evidence:
+      - src/web/dashboardData.ts#dashboardDataSchema
+roots:
+  - src/web

@@ -1,0 +1,16 @@
+id: dashboard-open-access
+kind: constraint
+within: team-dashboard
+aliases:
+  - no dashboard auth
+summary: "The dashboard and its API have no authentication. Anyone who can reach the server can see the team view, and anyone who guesses a Slack id in ?user= can see that person's view. Treat everything the API returns as public to the network."
+rule: "Never add secrets or anything more sensitive than names and standup notes to dashboard data, and put the dashboard behind SSO or reverse-proxy auth before exposing it beyond a trusted network."
+category: security
+why:
+  text: "The routes serve every request; the only check is whether a named person is linked. Standup notes can mention customers or incidents, and the server shares its port and public address with Slack's request endpoint."
+  evidence:
+    - src/web/server.ts#registerDashboardRoutes
+    - README.md#dashboard
+applies:
+  - src/web/server.ts#registerDashboardRoutes
+  - src/web/dashboard.ts#toPerson

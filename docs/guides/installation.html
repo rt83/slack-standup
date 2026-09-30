@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installation guide — Standup Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/guide.css">
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/highlight.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/languages/yaml.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/languages/ini.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/languages/bash.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/languages/nginx.min.js" defer></script>
+<script src="assets/guide.js" defer></script>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <a class="home" href="index.html">← Guides</a>
+    <ol>
+      <li><a href="#overview">How it fits together</a></li>
+      <li><a href="#requirements">Requirements</a></li>
+      <li><a href="#redmine">1. Prepare Redmine</a></li>
+      <li><a href="#slack">2. Create the Slack app</a></li>
+      <li><a href="#install">3. Install the app</a></li>
+      <li><a href="#configure">4. Configure</a></li>
+      <li class="sub"><a href="#settings">Settings reference</a></li>
+      <li><a href="#run">5. Run it</a></li>
+      <li class="sub"><a href="#proxy">HTTPS and the dashboard</a></li>
+      <li class="sub"><a href="#service">Run as a service</a></li>
+      <li><a href="#link-users">6. Link the team</a></li>
+      <li><a href="#check">7. Check it works</a></li>
+      <li><a href="#operate">Upgrades and backups</a></li>
+      <li><a href="#development">Local development</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="page">
+      <div class="kicker">Installation guide</div>
+      <h1>Install and run the Standup Bot</h1>
+      <p>For whoever deploys the app. Slack and Redmine are both hosted services; you run only the bot, on a server Slack can reach over HTTPS.</p>
+    </header>
+
+    <h2 id="overview">How it fits together</h2>
+    <p>The bot is one Node.js process. It receives Slack's requests, reads and writes Redmine, and serves the web dashboard. All on one port.</p>
+
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart TB
+  subgraph slack["Slack (hosted)"]
+    people["Team members"]
+  end
+  subgraph server["Your server"]
+    proxy["HTTPS reverse proxy"] --> bot["Standup bot<br/>Node.js on server.port"]
+    bot --- db[("SQLite<br/>data/app.db")]
+    conf["conf/app.yaml"] -. "read at start" .-> bot
+  end
+  redmine["Redmine (hosted)<br/>REST API"]
+  browser["Browser"]
+
+  people -- "commands, form submits" --> proxy
+  bot -- "modals, messages" --> slack
+  bot -- "comments, status changes<br/>(each person's own API key)" --> redmine
+  browser -- "/dashboard" --> proxy
+      </pre>
+      <figcaption>Slack calls the bot; the bot calls Slack and Redmine. The database is a local file.</figcaption>
+    </figure>
+
+    <ul>
+      <li><strong>Slack → bot.</strong> Slash commands, button clicks, the issue search box, and form submits all arrive at <code>/slack/events</code>.</li>
+      <li><strong>Bot → Slack.</strong> Opening the form, posting the report, sending reminders.</li>
+      <li><strong>Bot → Redmine.</strong> Every read and write uses the Redmine API key of the person using the form. Redmine therefore attributes each comment to that person.</li>
+      <li><strong>Database.</strong> A single SQLite file on the bot's server. It holds the Slack-to-Redmine links and the history of submissions. There is no database server to install.</li>
+    </ul>
+
+    <h2 id="requirements">Requirements</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>What</th><th>Needed</th></tr>
+      <tr><td>Node.js</td><td>22.18 or later. Node runs the TypeScript sources directly, so the server has no build step.</td></tr>
+      <tr><td>A server</td><td>Any Linux, macOS or Windows machine that Slack can reach at a public HTTPS address.</td></tr>
+      <tr><td>Redmine</td><td>REST API enabled. Version 5.0 or later is recommended; see <a href="#redmine">step 1</a>.</td></tr>
+      <tr><td>Slack</td><td>Permission to create and install an app in your workspace.</td></tr>
+      <tr><td>Build tools</td><td>Usually none. <code>better-sqlite3</code> ships prebuilt binaries for common platforms. On an unusual platform, npm compiles it and needs Python and a C++ compiler.</td></tr>
+    </table>
+    </div>
+
+    <h2 id="redmine">1. Prepare Redmine</h2>
+    <ol class="steps">
+      <li><strong>Enable the REST API.</strong> As a Redmine administrator, open <em>Administration → Settings → API</em>. Tick <em>Enable REST web service</em> and save.</li>
+      <li><strong>Check the version.</strong> Redmine 5.0 and later can return the statuses a person may move an issue to under its workflow. The form then offers only those. Older versions return no such list, and the form offers every status instead.</li>
+      <li><strong>Check permissions.</strong> Each person's role needs the <em>Add notes</em> permission on their projects. To change a status from the form, the workflow must allow that transition for their role. The bot never works around Redmine's permissions.</li>
+    </ol>
+    <p>You do not need a shared admin key. Each person's own API key is added to the bot in <a href="#link-users">step 6</a>.</p>
+
+    <h2 id="slack">2. Create the Slack app</h2>
+    <p>Pick the public address the bot will have first, for example <code>https://standup.example.com</code>. Slack needs it in the app's settings.</p>
+    <ol class="steps">
+      <li>Open <a href="https://api.slack.com/apps">api.slack.com/apps</a> and choose <em>Create New App → From a manifest</em>.</li>
+      <li>Pick your workspace, and paste the manifest below. Replace <code>standup.example.com</code> with your address in all four places.</li>
+      <li>Create the app, then choose <em>Install to Workspace</em>.</li>
+      <li>Copy two values for step 4:
+        <ul>
+          <li><em>OAuth &amp; Permissions → Bot User OAuth Token</em>, starting <code>xoxb-</code>.</li>
+          <li><em>Basic Information → App Credentials → Signing Secret</em>.</li>
+        </ul>
+      </li>
+      <li>Invite the bot to the channel reports go to: type <code>/invite @Standup Bot</code> in that channel.</li>
+    </ol>
+
+    <pre data-file="slack-app-manifest.yaml"><code class="language-yaml">display_information:
+  name: Standup Bot
+  description: Daily standup updates, pre-filled from Redmine
+features:
+  app_home:
+    home_tab_enabled: true
+    messages_tab_enabled: false
+  bot_user:
+    display_name: Standup Bot
+    always_online: false
+  slash_commands:
+    - command: /update
+      url: https://standup.example.com/slack/events
+      description: Submit your daily update
+      should_escape: true
+    - command: /dashboard
+      url: https://standup.example.com/slack/events
+      description: Open the standup dashboard
+      usage_hint: "[--p @person]"
+      should_escape: true
+    - command: /link-redmine
+      url: https://standup.example.com/slack/events
+      description: Link a Slack user to a Redmine account (admins)
+      usage_hint: "@user redmine_user_id api_key"
+      should_escape: true
+oauth_config:
+  scopes:
+    bot:
+      - commands
+      - chat:write
+      - im:write
+      - users:read
+settings:
+  event_subscriptions:
+    request_url: https://standup.example.com/slack/events
+    bot_events:
+      - app_home_opened
+  interactivity:
+    is_enabled: true
+    request_url: https://standup.example.com/slack/events
+    message_menu_options_url: https://standup.example.com/slack/events
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false</code></pre>
+
+    <div class="note">
+      <p><strong>Two settings the manifest sets that the app depends on:</strong></p>
+      <ul>
+        <li><code>should_escape: true</code>. Slack then sends <code>@jane</code> as <code>&lt;@U0123ABC|jane&gt;</code>. Without it, <code>/dashboard --p @jane</code> and <code>/link-redmine</code> cannot tell who you mean.</li>
+        <li><code>message_menu_options_url</code>. This is where Slack asks for search results as someone types in the "Add issue" box. Without it, the box stays empty.</li>
+      </ul>
+    </div>
+    <p>Slack checks the event URL when you save the manifest. It fails until the bot is running at that address. Save anyway, and return to <em>Event Subscriptions</em> to retry after <a href="#run">step 5</a>.</p>
+
+    <h2 id="install">3. Install the app</h2>
+    <pre><code class="language-bash">git clone git@github.com:rt83/slack-standup.git /opt/standup-bot
+cd /opt/standup-bot
+npm ci
+npm run build          # builds the dashboard client into dist/dashboard</code></pre>
+    <p><code>npm run build</code> builds only the dashboard's browser code. Run it again after every upgrade.</p>
+
+    <h2 id="configure">4. Configure</h2>
+    <p>The app reads its settings from <code>conf/app.yaml</code> in the folder it is started from. <code>conf-sample/</code> is the template, and it is kept in git. <code>conf/</code> holds your secrets, and git ignores it.</p>
+    <pre><code class="language-bash">cp -r conf-sample conf
+chmod 700 conf &amp;&amp; chmod 600 conf/app.yaml    # it holds the Slack secrets</code></pre>
+    <p>Then edit <code>conf/app.yaml</code>:</p>
+    <pre data-file="conf/app.yaml"><code class="language-yaml">slack:
+  botToken: xoxb-your-bot-token
+  signingSecret: your-signing-secret
+  updatesChannel: C0123456789
+
+redmine:
+  baseUrl: https://redmine.example.com
+
+server:
+  port: 3000
+  publicUrl: https://standup.example.com
+
+database:
+  path: ./data/app.db
+
+reminder:
+  cron: "0 10 * * 1-5"
+
+timeZone: Asia/Ho_Chi_Minh</code></pre>
+    <p>Quote the cron expression. An unquoted <code>*</code> at the start of a YAML value has a special meaning.</p>
+
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  file["conf/app.yaml<br/>in the working directory"] --> exists{"File exists?"}
+  exists -- "no" --> missing["App stops: copy conf-sample/"]
+  exists -- "yes" --> check["Validated once at start"]
+  check -- "missing, malformed<br/>or unknown key" --> stop["App stops and names<br/>each bad setting"]
+  check -- "valid" --> run["App starts"]
+      </pre>
+      <figcaption>How the app reads its settings.</figcaption>
+    </figure>
+    <p>The file is the only source of settings. Environment variables do not override it. Unknown keys are refused, so a misspelt setting stops the app at start. Otherwise it would be silently ignored.</p>
+
+    <h3 id="settings">Settings reference</h3>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Setting</th><th>Required</th><th>What it does</th></tr>
+      <tr><td><code>slack.botToken</code></td><td>Yes</td><td>The Bot User OAuth Token, <code>xoxb-…</code>. The app checks it with Slack when it starts, and stops if Slack rejects it.</td></tr>
+      <tr><td><code>slack.signingSecret</code></td><td>Yes</td><td>Proves a request came from Slack. Requests with a wrong signature are refused with 401.</td></tr>
+      <tr><td><code>slack.updatesChannel</code></td><td>No</td><td>The channel <em>ID</em> reports are posted to, not its name. Open the channel's details in Slack; the ID is at the bottom. Empty means reports are not posted.</td></tr>
+      <tr><td><code>redmine.baseUrl</code></td><td>Yes</td><td>Your Redmine's address, for example <code>https://redmine.example.com</code>.</td></tr>
+      <tr><td><code>server.port</code></td><td>No</td><td>The port the app listens on. Default <code>3000</code>.</td></tr>
+      <tr><td><code>server.publicUrl</code></td><td>No</td><td>The address people's browsers reach the app at. The <code>/dashboard</code> links are built from it. Default <code>http://localhost:&lt;port&gt;</code>, which only works on the server itself.</td></tr>
+      <tr><td><code>database.path</code></td><td>No</td><td>The SQLite file. Default <code>./data/app.db</code>, relative to the working directory. Created on first start, with its tables.</td></tr>
+      <tr><td><code>reminder.cron</code></td><td>No</td><td>When to DM people who have not submitted today, as a cron expression in <code>timeZone</code>. <code>"0 10 * * 1-5"</code> is 10:00 on weekdays. Empty means no reminder.</td></tr>
+      <tr><td><code>timeZone</code></td><td>No</td><td>The team's time zone, as an IANA name. It decides what "today" means for the reminder and the dashboard. Default <code>UTC</code>.</td></tr>
+    </table>
+    </div>
+    <p>The app validates every setting when it starts. If one is missing or malformed, it stops and names each one by its path, for example <code>slack.botToken</code>.</p>
+
+    <h2 id="run">5. Run it</h2>
+    <pre><code class="language-bash">cd /opt/standup-bot
+npm start</code></pre>
+    <p>It prints <code>⚡️ Redmine standup bot running on port 3000</code>. Start it from the folder that contains <code>conf/</code>: that is where it looks for its settings.</p>
+
+    <h3 id="proxy">HTTPS and the dashboard</h3>
+    <p>Slack only calls HTTPS addresses. Put a reverse proxy with a certificate in front of the app.</p>
+    <div class="warn">
+      <p><strong>The dashboard has no login of its own.</strong> Anyone who can reach <code>/dashboard</code> sees every update. Protect it at the proxy. Do <em>not</em> protect <code>/slack/</code>: Slack cannot log in, and it has its own signature check.</p>
+    </div>
+    <p>An nginx example, with basic auth on everything except Slack's endpoint:</p>
+    <pre data-file="/etc/nginx/sites-available/standup"><code class="language-nginx">server {
+    listen 443 ssl;
+    server_name standup.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/standup.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/standup.example.com/privkey.pem;
+
+    # Slack's requests: no login, the app verifies Slack's signature.
+    location /slack/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+    }
+
+    # The dashboard and its API: behind a login.
+    location / {
+        auth_basic           "Standup dashboard";
+        auth_basic_user_file /etc/nginx/standup.htpasswd;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+    }
+}</code></pre>
+    <p>Create the login file with <code>htpasswd -c /etc/nginx/standup.htpasswd yourname</code>. Your own SSO proxy works the same way.</p>
+
+    <h3 id="service">Run as a service</h3>
+    <p>On Linux with systemd, this restarts the app if it crashes and starts it at boot. <code>WorkingDirectory</code> matters: it is where the app finds <code>conf/</code> and, by default, <code>data/</code>.</p>
+    <pre data-file="/etc/systemd/system/standup-bot.service"><code class="language-ini">[Unit]
+Description=Redmine standup bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=standup
+WorkingDirectory=/opt/standup-bot
+ExecStart=/usr/bin/node src/app.ts
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+    <pre><code class="language-bash">sudo systemctl daemon-reload
+sudo systemctl enable --now standup-bot
+journalctl -u standup-bot -f      # follow the logs</code></pre>
+
+    <h2 id="link-users">6. Link the team</h2>
+    <p>The bot needs each person's Redmine account and API key. Each person finds their key in Redmine under <em>My account → API access key → Show</em>. Their Redmine user ID is the number in their profile URL, for example <code>/users/42</code>.</p>
+    <p>Then run this in Slack, once per person:</p>
+    <pre><code class="language-plaintext">/link-redmine @jane 42 0123456789abcdef0123456789abcdef01234567</code></pre>
+    <div class="warn">
+      <p><strong>Anyone in the workspace can run <code>/link-redmine</code>.</strong> There is no admin check yet. Whoever runs it can make Redmine attribute writes to someone else's account. Restrict who may run it before using the bot outside a trusted team; the place to add the check is marked in <code>src/slack/linkRedmineCommand.ts</code>.</p>
+      <p>The API keys are stored in the database as plain text. Keep the database file private.</p>
+    </div>
+    <p>Running the command again for the same person replaces their link.</p>
+
+    <h2 id="check">7. Check it works</h2>
+    <ol class="steps">
+      <li>In <em>Event Subscriptions</em> on api.slack.com, the request URL shows <em>Verified</em>.</li>
+      <li>A linked person runs <code>/update</code>. The form opens with their open Redmine issues.</li>
+      <li>They type a number in "Add issue". Matching issues appear.</li>
+      <li>They submit. Each issue gets a comment in Redmine, and the report appears in the updates channel.</li>
+      <li><code>/dashboard</code> replies with a button. It opens the dashboard, which shows the submission.</li>
+    </ol>
+
+    <h2 id="operate">Upgrades and backups</h2>
+    <h3>Upgrade</h3>
+    <pre><code class="language-bash">cd /opt/standup-bot
+git pull
+npm ci
+npm run build
+sudo systemctl restart standup-bot</code></pre>
+    <p>The database schema is created with <code>CREATE TABLE IF NOT EXISTS</code>. An upgrade keeps your existing data.</p>
+    <h3>Back up</h3>
+    <p>Everything worth keeping is in two places: <code>conf/app.yaml</code> and the database file. The database runs in SQLite's WAL mode, so while the app runs, recent writes may sit in <code>app.db-wal</code> beside it. Copying only <code>app.db</code> then misses them. Take a consistent copy with SQLite's own backup command instead:</p>
+    <pre><code class="language-bash">sqlite3 /opt/standup-bot/data/app.db ".backup '/backups/standup-$(date +%F).db'"</code></pre>
+
+    <h2 id="development">Local development</h2>
+    <p>For working on the code, not for production.</p>
+    <pre><code class="language-bash">cp -r conf-sample conf     # then fill in conf/app.yaml
+npm install
+npm run dev                # the app, restarting on change
+npm run dev:client         # the dashboard with hot reload: http://localhost:5173/dashboard/
+npm test                   # every test, server and client
+npm run typecheck          # tsc for the server, vue-tsc for the client</code></pre>
+    <p><code>dev:client</code> sends <code>/api</code> requests to the app on the port in <code>conf/app.yaml</code>, so run both. Slack still needs to reach the app over HTTPS to send it commands.</p>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>What you see</th><th>Cause and fix</th></tr>
+      <tr><td><code>No configuration at …/conf/app.yaml</code></td><td>The app was started from another folder, or <code>conf/</code> was never created. Start it from the install folder, or set <code>WorkingDirectory</code> in the service.</td></tr>
+      <tr><td><code>Invalid configuration …</code> listing settings</td><td>Those settings are missing, malformed, or not a setting the app knows. Fix them in <code>conf/app.yaml</code>. An unknown key is usually a typo, or a key at the wrong indentation.</td></tr>
+      <tr><td>The app exits at start with <code>invalid_auth</code></td><td>Slack rejected <code>slack.botToken</code>. Copy it again from <em>OAuth &amp; Permissions</em>. Reinstalling the app issues a new one.</td></tr>
+      <tr><td>Logs show <code>Signature mismatch</code>, and Slack says the app did not respond</td><td><code>slack.signingSecret</code> is wrong, or the proxy changes the request body. Pass <code>/slack/</code> through untouched.</td></tr>
+      <tr><td>"Your Slack account isn't linked to Redmine yet"</td><td>Run <a href="#link-users"><code>/link-redmine</code></a> for that person.</td></tr>
+      <tr><td>The "Add issue" box never shows results</td><td>The options URL is missing. Set <em>Interactivity → Select Menus → Options Load URL</em> to <code>https://…/slack/events</code>.</td></tr>
+      <tr><td>The status dropdown offers every status</td><td>Redmine returned no workflow list. It needs Redmine 5.0 or later, and the person needs permission to edit the issue.</td></tr>
+      <tr><td>A submission shows "redmine sync failed" on the dashboard</td><td>Redmine refused that write. The reason is in the logs and in <code>submission_items.redmine_error</code>. The usual causes are a revoked API key, a missing <em>Add notes</em> permission, or a status change the workflow does not allow.</td></tr>
+      <tr><td>Reports do not appear in the channel</td><td><code>slack.updatesChannel</code> is empty or is a name rather than an ID, or the bot was never invited to the channel.</td></tr>
+      <tr><td><code>/dashboard --p @jane</code> replies with the usage text</td><td>The command's <em>Escape channels, users, and links</em> setting is off. Turn it on, as <code>should_escape: true</code> in the manifest does.</td></tr>
+      <tr><td>The dashboard says "Dashboard client is not built"</td><td>Run <code>npm run build</code> in the install folder.</td></tr>
+      <tr><td>The reminder arrives at the wrong hour, or "today" is off by a day</td><td><code>timeZone</code> is not the team's time zone. Set it to the right IANA name.</td></tr>
+      <tr><td><code>npm ci</code> fails compiling <code>better-sqlite3</code></td><td>No prebuilt binary exists for this platform and Node version. Use a supported Node LTS, or install Python and a C++ compiler so npm can build it.</td></tr>
+    </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+id: slack-messenger
+kind: component
+within: slack-app
+aliases:
+  - SlackMessenger
+summary: "The Slack implementation of the reminder's DirectMessenger: it sends a DM by posting a message to the person's user id. It is the only piece of Slack the reminder job touches."
+responsibility: "Send a direct message to a Slack user through the Web API."
+does_not_own:
+  - "who gets a DM, and the text (reminder-job)"
+why:
+  text: "The reminder is policy and lives in standup-core. It asks for a DirectMessenger instead of the Slack client, so it can be tested with a stand-in. This adapter keeps the Slack call on the Slack side of the line."
+  evidence:
+    - src/slack/slackMessenger.ts#SlackMessenger
+    - src/standup/reminderJob.ts#DirectMessenger
+code:
+  - src/slack/slackMessenger.ts#SlackMessenger
+  - src/slack/slackMessenger.ts#SlackMessenger.sendDirectMessage
+interface:
+  - src/slack/slackMessenger.ts#SlackMessenger.sendDirectMessage

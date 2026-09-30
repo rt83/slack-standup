@@ -1,0 +1,50 @@
+# Hunch configuration. Every key is optional: the commented values are the defaults.
+# This file is checked into the repo. It names environment variables; it never holds secrets.
+# Addresses off this machine need their role in off_machine.allow.
+
+agent: "claude-code"
+preset: "standard@0.1.0"
+
+models:
+  predict: { provider: jev, token_env: TYPESAFE_API_KEY }
+  drafter:
+    model: qwen3.8-35b-a3b:q8_0
+    url: http://localhost:11434/v1
+  embed: { url: local, model: BAAI/bge-base-en-v1.5 }
+
+off_machine:
+  allow: [ predict ]
+
+upkeep:
+  triage: model
+
+# repos: []                                     # a workspace: the git checkouts in this folder, one map across them
+
+# store: { url: sqlite://.hunch/hunch.db }        # or postgres://hunch@db-box/hunch, password_env: HUNCH_DB_PASSWORD
+# artifacts: { url: file://.hunch/artifacts }     # or s3://host/bucket/prefix with access_key_env and secret_key_env
+# models:
+#   embed:   { url: builtin }                     # builtin = Node's hashing embedder; local = spawn the worker
+#   predict: { url: builtin }                     # e.g. { url: local, model: laya:multilingual }
+#                                                 # or { provider: jev, token_env: TYPESAFE_API_KEY }: TypeSafe's hosted Jev
+#   train:   { url: https://train-box:8700, token_env: HUNCH_TRAIN_TOKEN }
+#   drafter: { url: http://localhost:11434/v1, model: qwen3.5:4b }
+# off_machine: { allow: [] }                      # store, artifacts, embed, predict, train, drafter
+
+# retrieval: { candidates: 40, top_k: 5 }
+# gate: { plan_from_map_confidence: 0.85, needed_threshold: 0.5 }
+# training: { min_new_consultations: 50, recent_weight_halflife_days: 30 }
+# scoped: true
+# ab_test: false                                  # Hunch on for odd days of the year, off for even days
+# portal: { editor: vscode }                      # the portal opens files as vscode://file/…; kiro under Kiro, or cursor, …
+
+# Commands that print the current version of an external source; run by hunch sources check.
+# external_checkers:
+#   - { match: "https://github.com/", command: "gh issue view {url} --json updatedAt -q .updatedAt" }
+
+# upkeep:
+#   triage: heuristic                             # or model: the predict role answers the triage questions
+#   auto_apply: [verify]
+#   draft_threshold: 0.95
+#   reverify_drafts: true                         # the agent checks keeper drafts before it stops
+#   audit_sample: 0.1                             # share of applied drafts needing a semantic check to audit
+#   cosession: { enabled: auto, every_n_events: 25, notebook_chars: 12000, transcript: true }

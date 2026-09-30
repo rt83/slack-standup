@@ -1,0 +1,53 @@
+# Installed from preset standard@0.1.0. This project owns this copy: edit it, then run hunch kinds sync.
+kind: service
+description: >
+  A deployable unit or package with its own entry points: an API
+  server, a worker, a library package, a CLI.
+scope: [sub-system]
+freshness: structural
+verify: schema + resolution
+fields:
+  purpose:      { type: text, required: true, depth: "one or two sentences", hint: "Its role among the services: who calls it and what it hands on." }
+  owns:         { type: text, many: true, hint: "What it is responsible for, as the rest of the system relies on it." }
+  does_not_own: { type: text, many: true, hint: "What people might expect here but lives elsewhere, and where." }
+  why:          { type: reasoning, required: true, depth: "two to five sentences naming what would be harder if it were merged into a neighbour, or the shape it was chosen over", hint: "Why it is a separate service, and why its interface is shaped this way." }
+  invariants:   { type: reasoning, many: true, depth: "one sentence stating what must stay true, then why", hint: "What must stay true of its interface or state." }
+  roots:        { anchor: [directory, file], many: true, required: true }
+  entry:        { anchor: symbol, many: true, required: true, hint: "main, route registration, exported API." }
+  depends:      { ref: service, many: true }
+examples:
+  good:
+    id: render-service
+    kind: service
+    within: layout-engine
+    summary: >-
+      Schedules and runs layout passes, one per animation frame, and hands each finished pass to the
+      page renderer. It is the only way anything asks for layout, so it is where frame budgets and
+      skipped passes are decided.
+    purpose: Take every request for layout, batch them per frame, and run one pass over the blocks that changed.
+    owns: [the frame loop, which blocks a pass covers]
+    does_not_own: [measuring a block (measurement-cache), splitting tables (table-service)]
+    why:
+      text: >-
+        Edits arrive faster than frames; running a pass per edit laid the document out several times a
+        frame and dropped frames on long documents. One scheduler that batches per frame keeps typing
+        smooth, and gives one place to skip a pass when nothing visible changed.
+      evidence: [src/render/scheduler.ts#schedule, 5e1b2c9]
+    invariants:
+      - text: At most one pass runs per frame; a request during a pass is queued for the next.
+        evidence: [src/render/scheduler.ts#flush]
+    roots: [src/render]
+    entry: [src/render/scheduler.ts#schedule]
+  bad:
+    item:
+      id: render
+      kind: service
+      within: layout-engine
+      summary: The render service.
+      purpose: Rendering.
+      why: { text: Needed for rendering., inferred: true }
+      roots: [src/render]
+      entry: [src/render/scheduler.ts#schedule]
+    why_bad: >-
+      Every field restates the name. Nothing says who calls it, what it owns or leaves to others, or
+      why it is a service of its own.

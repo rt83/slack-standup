@@ -1,0 +1,17 @@
+id: utc-day-disagreement
+kind: mistake
+within: record-store
+summary: "The reminder, the dashboard and the per-day chart disagreed about what day it was. Some used SQLite's UTC date and some used server-local time, so early-morning submissions in the team's zone counted for the day before."
+symptom: "People who had submitted in the morning were still reminded or shown as missing, and the trend chart put their update on the wrong day."
+cause:
+  text: "Days were computed in several places with different clocks: SQLite's date('now') is UTC, and JavaScript used the server's zone. In a team seven hours ahead of UTC, the first hours of each day belonged to yesterday in SQL."
+  evidence:
+    - f7feae5
+lesson: "Ask the Calendar for any day, in SQL through local_day() and in code through dayOf/today; never call date() in SQL or format a Date without the team zone."
+fix:
+  - f7feae5
+regression:
+  - "src/lib/submissionStore.test.ts#SubmissionStore > counts today by the team's calendar, not UTC"
+area:
+  - calendar
+  - submission-store

@@ -1,0 +1,29 @@
+id: dashboard-routes
+kind: component
+within: dashboard-api
+aliases:
+  - dashboard server routes
+summary: "Mounts the dashboard on Bolt's Express router: GET /api/dashboard answers JSON for a scope and trend window read from the query, and GET /dashboard serves the built client and its assets. It also builds the dashboard link Slack posts, from the public URL."
+responsibility: "Map dashboard HTTP requests to the assembler and to the built client files, and build and read the dashboard URL."
+owns:
+  - "the page and API paths and the user and days query parameters"
+  - "404 for an unlinked person; 503 when the client is not built"
+  - "long-lived caching of the hashed client assets"
+does_not_own:
+  - "the data itself (dashboard-assembler)"
+why:
+  text: "dashboardUrl is the only place the link is built and readDashboardQuery the only place it is read, and both use the constants in dashboardData.ts. So the link Slack posts always opens the scope it names. A missing build gets a message saying to run npm run build, not a blank page."
+  evidence:
+    - src/web/server.ts#dashboardUrl
+    - src/web/server.ts#readDashboardQuery
+    - "src/web/dashboard.test.ts#dashboard URLs > builds the link Slack posts, and the server reads it back to the same scope"
+    - "src/web/server.test.ts#dashboard routes > says how to fix a missing client build instead of failing blankly"
+code:
+  - src/web/server.ts#registerDashboardRoutes
+  - src/web/server.ts#dashboardUrl
+  - src/web/server.ts#readDashboardQuery
+interface:
+  - src/web/server.ts#registerDashboardRoutes
+  - src/web/server.ts#dashboardUrl
+depends:
+  - dashboard-assembler

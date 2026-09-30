@@ -1,0 +1,44 @@
+id: submission-store
+kind: component
+within: record-store
+aliases:
+  - SubmissionStore
+summary: "Stores submissions and their items, and answers the questions asked of them: who submitted today, submissions per day, assigned vs added item counts, and the recent log with items. It registers a local_day() SQL function from the Calendar, so SQL groups by the team's day, not UTC's."
+responsibility: "Write submissions and sync outcomes, and read them back by the team's calendar day."
+owns:
+  - the stored timestamp format (UTC, 'YYYY-MM-DD HH:MM:SS')
+  - the local_day() SQL function
+  - "filling days with no submissions with zero"
+does_not_own:
+  - "what a day is (calendar)"
+  - "the report text and form payload it stores (standup-service)"
+why:
+  text: "SQLite's date('now') is UTC, which put a submission made in the team's morning on the previous day. Registering the Calendar's dayOf as local_day() keeps day logic in one place for both SQL and JS. A lower-bound timestamp on each query keeps the scan small, and local_day() then filters the exact edge. Timestamps are written in SQLite's CURRENT_TIMESTAMP shape, so they sort as text."
+  evidence:
+    - src/lib/submissionStore.ts#SubmissionStore
+    - "src/lib/submissionStore.test.ts#SubmissionStore > counts today by the team's calendar, not UTC"
+    - f7feae5
+invariants:
+  - text: "A submission and all its items are inserted in one transaction."
+    evidence:
+      - src/lib/submissionStore.ts#SubmissionStore.record
+code:
+  - src/lib/submissionStore.ts#SubmissionStore
+  - src/lib/submissionStore.ts#SubmissionStore.record
+  - src/lib/submissionStore.ts#SubmissionStore.recordSync
+  - src/lib/submissionStore.ts#SubmissionStore.submittersToday
+  - src/lib/submissionStore.ts#SubmissionStore.dailyCounts
+  - src/lib/submissionStore.ts#SubmissionStore.originCounts
+  - src/lib/submissionStore.ts#SubmissionStore.recent
+  - src/lib/submissionStore.ts#toStoredTimestamp
+  - src/lib/submissionStore.ts#fromStoredTimestamp
+interface:
+  - src/lib/submissionStore.ts#SubmissionStore.record
+  - src/lib/submissionStore.ts#SubmissionStore.recordSync
+  - src/lib/submissionStore.ts#SubmissionStore.submittersToday
+  - src/lib/submissionStore.ts#SubmissionStore.dailyCounts
+  - src/lib/submissionStore.ts#SubmissionStore.originCounts
+  - src/lib/submissionStore.ts#SubmissionStore.recent
+depends:
+  - calendar
+  - database-schema

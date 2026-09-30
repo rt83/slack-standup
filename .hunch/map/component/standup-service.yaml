@@ -1,0 +1,42 @@
+id: standup-service
+kind: component
+within: standup-core
+aliases:
+  - StandupService
+summary: "Fills the standup form from the tracker and turns a submitted form into tracker writes. On open it fetches the person's open issues and the global status list together. On add it fetches hand-added issues that are not already listed. On submit it records the update first, then writes every entry in parallel and records each outcome."
+responsibility: "Load a person's form content from the tracker, and carry out a submission: record it, then write each entry to its issue."
+owns:
+  - "which issues go into the form: assigned plus hand-added, without duplicates"
+  - "the order of a submit: record, then write, then record each outcome"
+  - collecting which issue writes failed
+does_not_own:
+  - "the view's blocks (standup-form)"
+  - "the comment and report wording (report-formatter)"
+  - "posting the report to the channel (standup-handlers)"
+why:
+  text: "Recording before writing means an update is kept even when Redmine is down, and each item carries its own sync flag and error for follow-up. Writes run in parallel and one failure does not stop the others, so one bad issue does not lose a whole update. An added issue already on the assigned list is skipped, because its blocks would collide in the view."
+  evidence:
+    - src/standup/standupService.ts#StandupService.submit
+    - "src/standup/standupService.test.ts#StandupService > records a failed Redmine write and still writes the rest"
+    - "src/standup/standupService.test.ts#StandupService > does not add an issue that is already on the list"
+invariants:
+  - text: "A submission is recorded before any tracker write starts, so a crash mid-write still leaves the update in the database."
+    evidence:
+      - src/standup/standupService.ts#StandupService.submit
+  - text: "Every tracker call uses the submitting person's own API key."
+    evidence:
+      - "src/standup/standupService.test.ts#StandupService > writes each entry to Redmine under the person's own key, and records it"
+code:
+  - src/standup/standupService.ts#StandupService
+  - src/standup/standupService.ts#StandupService.openForm
+  - src/standup/standupService.ts#StandupService.addIssue
+  - src/standup/standupService.ts#StandupService.submit
+interface:
+  - src/standup/standupService.ts#StandupService.openForm
+  - src/standup/standupService.ts#StandupService.addIssue
+  - src/standup/standupService.ts#StandupService.submit
+depends:
+  - redmine-rest-client
+  - submission-store
+  - report-formatter
+  - standup-form

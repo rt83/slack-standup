@@ -2,21 +2,46 @@
   "name": "redmine-standup-bot",
   "version": "0.1.0",
   "description": "Slack app that collects daily standup updates, pre-filled from Redmine, and writes reports back as Redmine comments/status changes.",
-  "main": "src/app.js",
-  "type": "commonjs",
+  "type": "module",
+  "main": "src/app.ts",
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
-    "migrate": "node src/lib/migrate.js"
+    "start": "node src/app.ts",
+    "dev": "node --watch src/app.ts",
+    "dev:client": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p . && vue-tsc -p src/web/client",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@slack/bolt": "^3.19.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@slack/bolt": "^5.1.0",
     "axios": "^1.7.7",
-    "better-sqlite3": "^11.3.0",
-    "dotenv": "^16.4.5",
-    "node-cron": "^3.0.3"
+    "better-sqlite3": "^12.11.1",
+    "chart.js": "^4.5.1",
+    "express": "^5.2.1",
+    "node-cron": "^3.0.3",
+    "vue": "^3.5.43",
+    "vue-chartjs": "^5.3.4",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.19.0",
+    "@types/node-cron": "^3.0.11",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "@vue/test-utils": "^2.5.1",
+    "happy-dom": "^20.14.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2",
+    "vue-tsc": "^3.3.11"
   }
 }

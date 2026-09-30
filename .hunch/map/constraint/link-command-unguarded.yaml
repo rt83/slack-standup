@@ -1,0 +1,15 @@
+id: link-command-unguarded
+kind: constraint
+within: slack-app
+aliases:
+  - no admin check
+summary: "/link-redmine does not check who runs it. Anyone in the workspace who can run it can link any Slack user to any Redmine key, and so decide whose name that person's updates appear under in Redmine."
+rule: "Check body.user_id against an admin allowlist before linking, before this runs in production."
+category: security
+why:
+  text: "A link decides which API key the form writes with. A wrong or malicious link makes Redmine attribute one person's notes and status changes to another account. The code comment says to add the check, and the README lists it as a known gap."
+  evidence:
+    - src/slack/linkRedmineCommand.ts#registerLinkRedmineCommand
+    - README.md#known-gaps
+applies:
+  - src/slack/linkRedmineCommand.ts#registerLinkRedmineCommand

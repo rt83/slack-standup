@@ -1,0 +1,21 @@
+id: workflow-statuses
+kind: concept
+within: update-collection
+aliases:
+  - allowed_statuses
+  - fallback statuses
+summary: "An issue's status dropdown offers the statuses this person may move it to under its tracker's workflow, as Redmine reports them. When Redmine does not say, the dropdown falls back to every status Redmine defines. \"Unknown\" (null) and \"none allowed\" (empty) are handled the same way: both fall back."
+meaning: "allowedStatuses is the workflow-legal next statuses for this person on this issue, or null when Redmine did not return them. fallbackStatuses is the global status list."
+why_it_matters:
+  text: "Offering only legal statuses avoids a submit that Redmine rejects for a forbidden transition. The list needs include=allowed_statuses on a single-issue fetch, which is why assigned issues are fetched one by one."
+  evidence:
+    - src/standup/standupForm.ts#issueBlocks
+    - src/lib/redmineClient.ts#RedmineClient.listAssignedOpenIssues
+    - "src/standup/standupForm.test.ts#standup form > offers an issue's own workflow statuses, falling back to the global list"
+common_mistake:
+  text: "Fetching issues without include=allowed_statuses. Redmine then leaves the list out, and every dropdown silently shows all statuses."
+  evidence:
+    - f7feae5
+where:
+  - src/lib/redmineClient.ts#Issue.allowedStatuses
+  - src/standup/standupForm.ts#StandupFormContent.fallbackStatuses

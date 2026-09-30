@@ -1,0 +1,22 @@
+id: dashboard-page
+kind: component
+within: dashboard-client
+aliases:
+  - App.vue
+  - Daily Log
+summary: "The Vue root component titled \"Daily Log\". It loads the data on mount and shows the stat strip, the trend chart, then either the missing list (team) or the origin chart (person), and the submission log. It shows the loader's message when loading fails."
+responsibility: "Lay out the dashboard for the loaded state, choosing the team or person panel from the data's focus."
+owns:
+  - "the page title and scope label"
+  - "which panel shows: missing list for the team, origin chart for a person"
+does_not_own:
+  - "fetching and validating (dashboard-loader)"
+why:
+  text: "The focus is a discriminated union in the contract, so the page switches on focus.kind and cannot show a missing list in a person's view. The page never parses the query string itself; it hands window.location.search to the loader."
+  evidence:
+    - src/web/dashboardData.ts#focusSchema
+    - "src/web/client/App.test.ts#dashboard page > shows a person's composition chart instead of the missing list"
+code:
+  - src/web/client/App.vue
+depends:
+  - dashboard-loader

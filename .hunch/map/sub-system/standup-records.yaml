@@ -1,0 +1,33 @@
+id: standup-records
+kind: sub-system
+within: daily-standup
+aliases:
+  - storage
+  - database
+summary: "The app's memory: who is linked to which tracker account, every submission with its items and whether each reached the tracker, and what \"today\" means for the team. The form, the reminder and the dashboard all read it, so they agree on who has reported."
+purpose: "Keep account links and submissions in SQLite, and answer the questions asked of them by day in the team's time zone: who submitted today, counts per day, and the recent log."
+owns:
+  - the SQLite schema and the database file
+  - Slack-to-Redmine account links, including each person's API key
+  - submissions, their items, and each item's sync outcome
+  - the team's calendar day
+does_not_own:
+  - "the issues themselves: they live in Redmine and are fetched live (update-collection)"
+  - "turning records into the dashboard's shape (team-dashboard)"
+why:
+  text: "Both the Slack side and the dashboard need the same answer to \"who has reported today\". Before the refactor, the reminder, the dashboard and the per-day chart mixed SQLite's UTC date with server-local time and disagreed. One store with one Calendar answers it once for everybody."
+  evidence:
+    - f7feae5
+    - src/lib/calendar.ts#Calendar
+invariants:
+  - text: "Timestamps are stored in UTC and turned into days only through the team's Calendar, never with SQLite's own date functions, which are UTC."
+    evidence:
+      - src/lib/submissionStore.ts#SubmissionStore
+  - text: "A submission and its items are written in one transaction, so a submission never exists without its items."
+    evidence:
+      - src/lib/submissionStore.ts#SubmissionStore.record
+roots:
+  - src/lib/db.ts
+  - src/lib/submissionStore.ts
+  - src/lib/userStore.ts
+  - src/lib/calendar.ts

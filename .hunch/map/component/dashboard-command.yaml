@@ -1,0 +1,25 @@
+id: dashboard-command
+kind: component
+within: slack-app
+aliases:
+  - /dashboard
+summary: "Answers /dashboard with a button that links to the web dashboard: the team view with no argument, one person's view with --p @mention. A plain name is refused, and so is a person with no linked account."
+responsibility: "Parse /dashboard's arguments into a dashboard scope and reply with a link button to that scope's page."
+owns:
+  - "the /dashboard argument grammar: nothing, or --p followed by one escaped mention"
+does_not_own:
+  - "the URL shape (dashboard-routes, dashboardUrl)"
+  - "the dashboard itself (team-dashboard)"
+why:
+  text: "A bot cannot open a browser, so the reply is a url button that opens in the person's own browser. Only an escaped mention names a user reliably; a plain name like \"jane\" is ambiguous, so it is refused rather than guessed."
+  evidence:
+    - src/slack/dashboardCommand.ts#registerDashboardCommand
+    - "src/slack/commandArgs.test.ts#parseDashboardArgs > reads the team view, a person, or nothing valid"
+code:
+  - src/slack/dashboardCommand.ts#parseDashboardArgs
+  - src/slack/dashboardCommand.ts#registerDashboardCommand
+interface:
+  - src/slack/dashboardCommand.ts#registerDashboardCommand
+depends:
+  - dashboard-routes
+  - user-store

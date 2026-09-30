@@ -1,0 +1,19 @@
+id: record-then-sync
+kind: technique
+within: standup-core
+aliases:
+  - redmine_synced
+summary: "A submission is stored first, and each item's Redmine write is attempted afterwards and its outcome written back to the item. Redmine being slow or down never loses an update, and failed writes stay visible for follow-up."
+pattern: other
+purpose:
+  text: "Writing to Redmine first would lose the whole update when Redmine is unavailable, and one failed issue would lose the rest. Recording first, then marking each item synced or failed with its error, keeps the update and says exactly which comments are missing. The dashboard shows the per-item sync flag."
+  evidence:
+    - src/standup/standupService.ts#StandupService.submit
+    - src/lib/submissionStore.ts#SubmissionStore.recordSync
+    - "src/lib/submissionStore.test.ts#SubmissionStore > records the Redmine sync outcome per item"
+implements:
+  - src/standup/standupService.ts#StandupService.submit
+  - src/lib/submissionStore.ts#SubmissionStore.recordSync
+caveats:
+  - "Nothing retries a failed write; it stays failed in submission_items until someone acts on it."
+  - "The person is not told in Slack that a write failed; only the server log says so."
